@@ -1,13 +1,14 @@
 import type { ReactNode } from 'react';
 
 import type { ApplicationProgress, SectionId } from '../../domain';
-import type { CapabilitySummary } from '../../application/store';
+import type { ActivityEntry, CapabilitySummary } from '../../application/store';
 import { AgentCompanion } from '../agent-companion/AgentCompanion';
 import { SECTION_META } from './section-meta';
 
 interface ApplicationShellProps {
   activeSection: SectionId;
   capabilities: readonly CapabilitySummary[];
+  activity?: readonly ActivityEntry[];
   companionOpen: boolean;
   currentSection: ReactNode;
   onCloseCompanion: () => void;
@@ -19,6 +20,7 @@ interface ApplicationShellProps {
 export function ApplicationShell({
   activeSection,
   capabilities,
+  activity,
   companionOpen,
   currentSection,
   onCloseCompanion,
@@ -156,6 +158,7 @@ export function ApplicationShell({
 
         <AgentCompanion
           capabilities={capabilities}
+          activity={activity}
           isOpen={companionOpen}
           onClose={onCloseCompanion}
           onOpen={onOpenCompanion}

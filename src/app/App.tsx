@@ -16,6 +16,7 @@ import { IncomeSection } from '../ui/sections/IncomeSection';
 import { ReviewSection } from '../ui/sections/ReviewSection';
 import { ApplicationShell } from '../ui/layout/ApplicationShell';
 import { useCivicFlowStore } from '../ui/use-civic-flow-store';
+import { useWebMcpRegistry } from '../webmcp';
 
 const REVIEW_FOCUS_TARGETS: Partial<Record<ReviewIssueCode, string>> = {
   ABOUT_INCOMPLETE: 'about-first-name',
@@ -28,6 +29,7 @@ const REVIEW_FOCUS_TARGETS: Partial<Record<ReviewIssueCode, string>> = {
 
 export function App() {
   const { snapshot, store } = useCivicFlowStore();
+  useWebMcpRegistry(store);
   const progress = getApplicationProgress(snapshot.application);
   const [companionOpen, setCompanionOpen] = useState(false);
   const [reviewFocusTarget, setReviewFocusTarget] = useState<string | null>(
@@ -180,6 +182,7 @@ export function App() {
     <ApplicationShell
       activeSection={snapshot.ui.activeSection}
       capabilities={snapshot.ui.capabilities}
+      activity={snapshot.ui.activity}
       companionOpen={companionOpen}
       currentSection={currentSection}
       onCloseCompanion={() => setCompanionOpen(false)}

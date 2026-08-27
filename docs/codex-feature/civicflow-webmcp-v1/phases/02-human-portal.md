@@ -2,7 +2,7 @@
 
 ## Status
 
-`codex-review`. Phase 0 Gate A remains independently accepted. Packets 1.1 through 1.5 have implementation evidence in this task; independent review and the later Phase 2 contract suite remain outstanding.
+`validated`. Phase 0 Gate A remains independently accepted. The user confirmed the Phase 1 review is complete; the coordinator verified the recorded packet evidence against the current repository and green aggregate suite. Phase 1 Gate B is accepted.
 
 ## Goal
 
@@ -46,7 +46,7 @@ Packets 1.1 through 1.5 below are the atomic implementation and review tasks. Th
 
 ### Packet 1.1 — application shell and responsive navigation
 
-- **Status:** `codex-review`
+- **Status:** `validated`
 - **Depends on:** Phase 0 Gate A
 - **Owns:** product-specific shell, six labels in fixed order, progress header, disclosure, step rail, navigation semantics, responsive companion affordance, base styles, and shell tests
 - **RED:** `src/ui/layout/ApplicationShell.test.tsx` and `tests/e2e/responsive-shell.spec.ts` fail for missing labels/order, 20% initial progress, disclosure, landmarks, keyboard navigation, mobile affordance, or 375px overflow
@@ -60,7 +60,7 @@ Packets 1.1 through 1.5 below are the atomic implementation and review tasks. Th
 
 ### Packet 1.2 — About You and Household
 
-- **Status:** `codex-review`
+- **Status:** `validated`
 - **Depends on:** 1.1
 - **Owns:** editable synthetic applicant fields, validation display, household member add/edit cards, selection/deselection, explicit no-other-member confirmation, and accessible field/card primitives
 - **Allowlist:** `src/ui/sections/AboutSection.tsx`, `HouseholdSection.tsx`, shared UI fields/cards, their tests, and permitted app wiring
@@ -74,7 +74,7 @@ Packets 1.1 through 1.5 below are the atomic implementation and review tasks. Th
 
 ### Packet 1.3 — Income and Current Coverage
 
-- **Status:** `codex-review`
+- **Status:** `validated`
 - **Depends on:** 1.2
 - **Owns:** income cards/forms, human dollars-to-cents conversion and validation, income selection, coverage controls for every applying person, explicit none/covered details, and selection behavior
 - **Allowlist:** `src/ui/sections/IncomeSection.tsx`, `CoverageSection.tsx`, currency/input helpers, tests, and permitted app wiring
@@ -88,7 +88,7 @@ Packets 1.1 through 1.5 below are the atomic implementation and review tasks. Th
 
 ### Packet 1.4 — Documents and review
 
-- **Status:** `codex-review`
+- **Status:** `validated`
 - **Depends on:** 1.3
 - **Owns:** preset synthetic document controls, document cards, deterministic review summary, issue links, highlights, and focus/navigation behavior
 - **Allowlist:** `src/ui/sections/DocumentsSection.tsx`, `ReviewSection.tsx`, issue-summary/link components, tests, and permitted app wiring
@@ -102,7 +102,7 @@ Packets 1.1 through 1.5 below are the atomic implementation and review tasks. Th
 
 ### Packet 1.5 — attestation, human-only submission, and reset
 
-- **Status:** `codex-review`
+- **Status:** `validated`
 - **Depends on:** 1.4
 - **Owns:** attestation checkbox, visible Submit Demo control, submitted state, local success copy, locked edit presentation, reset confirmation, and manual submission integration test
 - **Allowlist:** review controls, submitted-state/reset-dialog components, `tests/integration/manual-submission.test.tsx`, and permitted app wiring
@@ -151,3 +151,10 @@ Use the existing Vite Sites capability path only if the phase allowlist and curr
 - **Aggregate GREEN:** `npm run format:check`, `npm run lint`, `npm run scan:secrets`, `npm run typecheck`, `npm run test:unit -- --run` (13 files, 48 tests), `npm run build`, and `npm run test:e2e` (3 tests) passed after the no-income/navigation correction. The exact `npm run verify` command passes those gates and then stops at `No test files found` for `tests/contract/**/*.test.ts`; that suite belongs to Phase 2 and remains a Phase 1 exit blocker under the approved prompt.
 - **Actual Phase 1 files:** `src/app/App.tsx`; `src/styles.css`; `src/test/setup.ts`; `src/ui/layout/ApplicationShell.tsx`, `section-meta.ts`, and tests; `src/ui/agent-companion/AgentCompanion.tsx`; `src/ui/components/FormField.tsx` and `SectionPrimitives.tsx`; `src/ui/sections/AboutSection.tsx`, `HouseholdSection.tsx`, `IncomeSection.tsx`, `CoverageSection.tsx`, `DocumentsSection.tsx`, `ReviewSection.tsx`, and tests; `src/ui/currency.ts`, `types.ts`, `use-civic-flow-store.ts`; `tests/integration/manual-submission.test.tsx`; and `tests/e2e/golden-path.spec.ts` plus the existing shell specs. `vitest.config.ts` received the minimal test-discovery include needed for the ledger-allowlisted integration test. No Phase 0 domain/application source, WebMCP, voice, server, deployment, or later-phase ledger file was edited.
 - **Boundary confirmation:** only this Site-owning root task edited the checkout. No OMP, Gemini, Cursor, Antigravity, or source-editing subagent was invoked; no commit, push, remote Site create/save/deploy/publish, hosted environment mutation, live API call, or secret access occurred. The only external UI action was opening the local preview in Codex.
+
+## Independent acceptance
+
+- **Acceptance date and timezone:** 2026-08-27, Asia/Kolkata.
+- **Reviewer:** coordinating Codex task, with the user's explicit confirmation that the Phase 1 review was completed.
+- **Evidence checked:** the Phase 1 packet records, the committed Phase 1 baseline `923efae8634ca311672e209065b6d2d3557fcedc`, keyboard/browser flow evidence, no-network submission test, and the current aggregate suite (which includes all Phase 1 tests).
+- **Decision:** Gate B accepted; the six-section keyboard-completable synthetic portal, human-only local submission boundary, responsive shell, explicit no-income behavior, and deterministic reset are validated. Phase 2 was allowed to proceed only as an explicitly authorized overlap and is now independently reviewed in its own phase document.

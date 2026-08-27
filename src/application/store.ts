@@ -103,7 +103,22 @@ function defaultNewId(): string {
   if (typeof globalThis.crypto?.randomUUID !== 'function') {
     throw new Error('crypto.randomUUID is unavailable');
   }
-  return globalThis.crypto.randomUUID();
+  return `id-${globalThis.crypto.randomUUID()}`;
+}
+
+function makeUniqueActivityId(
+  baseId: string,
+  existingEntries: readonly ActivityEntry[],
+): string {
+  const existingIds = new Set(existingEntries.map((a) => a.id));
+  if (!existingIds.has(baseId)) {
+    return baseId;
+  }
+  let count = 1;
+  while (existingIds.has(`${baseId}-${count}`)) {
+    count += 1;
+  }
+  return `${baseId}-${count}`;
 }
 
 function addActivity(
@@ -112,11 +127,13 @@ function addActivity(
   source: CommandContext['source'],
   now: () => Date,
 ): UiState {
+  const effectiveId = makeUniqueActivityId(activity.id, ui.activity);
   return {
     ...ui,
     activity: [
       {
         ...activity,
+        id: effectiveId,
         source: activity.source ?? source,
         occurredAt: activity.occurredAt ?? now().toISOString(),
       },

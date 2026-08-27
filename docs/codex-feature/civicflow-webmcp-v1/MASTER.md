@@ -4,7 +4,7 @@
 
 - **Feature:** CivicFlow, a WebMCP-native public-benefits application workspace
 - **Version:** v1
-- **Overall status:** `in-progress` — Phase 0 is validated; Phase 1 is awaiting independent review; Phases 2–5 are planned
+- **Overall status:** `in-progress` — Phases 0, 1, and 2 are validated; Phases 3–5 are planned
 - **Ledger owner:** the coordinating Codex task, with independent review by a Sol route
 - **Phase 1 Site owner:** one native `luna_max` task is the sole source and local-preview owner
 - **Last updated:** 2026-08-27
@@ -124,14 +124,14 @@ The provider-neutral `CurrentToolSurface` snapshots and executes current WebMCP 
 
 ## Phase map and ownership
 
-| Plan phase                                | Ledger document                                                                       | Status         | Dependency            | Gate                                   |
-| ----------------------------------------- | ------------------------------------------------------------------------------------- | -------------- | --------------------- | -------------------------------------- |
-| Phase 0 — foundation                      | [01-foundation.md](phases/01-foundation.md)                                           | `validated`    | approved scope        | Gate A: domain/application evidence    |
-| Phase 1 — human portal                    | [02-human-portal.md](phases/02-human-portal.md)                                       | `codex-review` | Phase 0               | Gate B: keyboard-completable portal    |
-| Phase 2 — WebMCP capability layer         | [03-webmcp-capability-layer.md](phases/03-webmcp-capability-layer.md)                 | `planned`      | Phase 1               | Gate C: fake-port deterministic tools  |
-| Phase 3 — integration and live Site Tools | [04-integration-and-live-site-tools.md](phases/04-integration-and-live-site-tools.md) | `planned`      | Phase 2               | Gate D: supported-route live evidence  |
-| Phase 4 — optional voice                  | [05-optional-voice.md](phases/05-optional-voice.md)                                   | `planned`      | Gate D                | Gate E: secure authorized voice or cut |
-| Phase 5 — polish and release              | [06-polish-release-submission.md](phases/06-polish-release-submission.md)             | `planned`      | P0 and voice decision | Gate F: public release package         |
+| Plan phase                                | Ledger document                                                                       | Status      | Dependency            | Gate                                   |
+| ----------------------------------------- | ------------------------------------------------------------------------------------- | ----------- | --------------------- | -------------------------------------- |
+| Phase 0 — foundation                      | [01-foundation.md](phases/01-foundation.md)                                           | `validated` | approved scope        | Gate A: domain/application evidence    |
+| Phase 1 — human portal                    | [02-human-portal.md](phases/02-human-portal.md)                                       | `validated` | Phase 0               | Gate B: keyboard-completable portal    |
+| Phase 2 — WebMCP capability layer         | [03-webmcp-capability-layer.md](phases/03-webmcp-capability-layer.md)                 | `validated` | Phase 1               | Gate C: fake-port deterministic tools  |
+| Phase 3 — integration and live Site Tools | [04-integration-and-live-site-tools.md](phases/04-integration-and-live-site-tools.md) | `planned`   | Phase 2               | Gate D: supported-route live evidence  |
+| Phase 4 — optional voice                  | [05-optional-voice.md](phases/05-optional-voice.md)                                   | `planned`   | Gate D                | Gate E: secure authorized voice or cut |
+| Phase 5 — polish and release              | [06-polish-release-submission.md](phases/06-polish-release-submission.md)             | `planned`   | P0 and voice decision | Gate F: public release package         |
 
 Packets are dependency ordered and cannot be combined across a phase gate. One writer owns a packet at a time. Shared-contract changes return to the owning earlier packet.
 
@@ -142,7 +142,7 @@ Packets are dependency ordered and cannot be combined across a phase gate. One w
 - Later bounded implementation packets may use a native `luna_max` task only when separately dispatched with exact file and test allowlists. A Sol reviewer inspects actual state and evidence; worker completion prose never self-accepts a phase.
 - Live Site Tools evidence must use a currently supported validation route, such as Sol or Terra, because Luna is not assumed to be enabled for that validation.
 - Sites work uses the existing Vite capability path. Phase 1 is local-only: no initializer over the repository, remote Site creation, save, deploy, publish, hosted environment mutation, live API, secret access, commit, or push.
-- The current repository has no Git `HEAD` yet. The Phase 0 files are uncommitted and user-owned implementation work; future phase preflights must record that baseline and avoid claiming a clean checkout.
+- The original foundation preflight had no Git `HEAD`; the requested local Phase 1 commit now provides the Phase 2 baseline `923efae8634ca311672e209065b6d2d3557fcedc` on `main`. Phase 2 changes remain user-owned and uncommitted locally; future phase preflights must record the exact status and avoid claiming a clean checkout.
 
 ## Testing and exact gates
 
@@ -150,7 +150,7 @@ Every packet follows RED, GREEN, bounded refactor, focused gate, and independent
 
 Required scripts are `npm ci`, `npm run format:check`, `npm run lint`, `npm run scan:secrets`, `npm run typecheck`, `npm run test:unit -- --run`, `npm run test:contract -- --run`, `npm run test:e2e`, `npm run build`, and `npm run verify`. `verify` runs formatting, lint, secret scan, typecheck, unit tests, contract tests, build, and E2E in that order.
 
-Phase 0 evidence already recorded: clean lockfile installation, 32 unit tests across five files, typecheck, lint, format check, secret scan, production build, browser smoke, and worktree scope review all passed. The contract suite is intentionally empty until Phase 2 and therefore makes the aggregate `verify` command stop at `No test files found`; this is not a Phase 0 gate failure, but Phase 1 completion must not be claimed until Phase 2 supplies those tests.
+Phase 0 evidence already recorded: clean lockfile installation, 32 unit tests across five files, typecheck, lint, format check, secret scan, production build, browser smoke, and worktree scope review all passed. At that time the contract suite was intentionally empty; Phase 2 now supplies the contract/integration tests and the aggregate `verify` command passes.
 
 The non-negotiable automated cases include exact seed/progress and review rules, every command's success/failure/no-op/idempotency/lock behavior, strict closed schemas and limits, atomic coverage, dynamic registry races, visible DOM updates before tool resolution, no submission tool or network submission, corrupt-storage recovery, hostile document text safety, accessibility, media cleanup, compact outputs, and clean-install reproducibility.
 
@@ -183,12 +183,18 @@ No decision is required to create this ledger. If future evidence conflicts with
 
 ## Current implementation evidence
 
-Phase 1 execution began on 2026-08-27 in the Site-owning root task. The repository baseline is `/Users/SubhavMathur/Desktop/Subhav Main/AI Projects/CivicFlow` on branch `main` with no Git `HEAD`; all existing files are known Phase 0/ledger work from this task and remain uncommitted. No other writer is editing the checkout. The first implementation scope is limited to the Phase 1 allowlist.
+Phase 1 execution began on 2026-08-27 in the Site-owning root task. The repository baseline was `/Users/SubhavMathur/Desktop/Subhav Main/AI Projects/CivicFlow` on branch `main` before the requested local commit; the Phase 2 baseline is commit `923efae8634ca311672e209065b6d2d3557fcedc`. The user confirmed the Phase 1 review is complete, and the coordinator accepted Gate B using the recorded evidence and current green suite. No other writer is editing the checkout.
 
 The repository does not contain `@openai/sites-vite-plugin` or `.openai/hosting.json`. The supported plugin requires a hosting manifest/project identifier and Vite 8, so adding it would require a remote/hosted configuration that Phase 1 explicitly forbids. The local preview therefore remains the accepted Vite app path; no Sites project was created, saved, deployed, published, or mutated.
 
-Phase 1 packet evidence is recorded in [02-human-portal.md](phases/02-human-portal.md). The implementation is currently `codex-review`, not independently accepted: all local product gates and the keyboard-driven browser flow pass, while the aggregate stops at the intentionally empty Phase 2 contract suite.
+Phase 1 packet evidence is recorded in [02-human-portal.md](phases/02-human-portal.md). All five packets and Gate B are validated after the user's review confirmation and coordinator evidence check. The aggregate verification now includes the Phase 2 contract suite and passes.
 
 ## Current ledger acceptance state
 
-This ledger records Phase 1 implementation evidence but does not independently accept the phase, create a Site, or authorize any external mutation. The next permitted action is an independent diff/evidence review; Phase 2 remains gated on that review and on its own contract suite.
+This ledger records and accepts Phase 1 Gate B and Phase 2 Gate C; it does not create a Site or authorize any new external mutation. Phase 2's local deterministic Gate C evidence is recorded in [03-webmcp-capability-layer.md](phases/03-webmcp-capability-layer.md); live Site Tools remain a later Phase 3 gate.
+
+### Phase 2 execution evidence
+
+Phase 2 was dispatched as one complete OMP implementation task using `google-antigravity/gemini-3.7-flash` (`gemini-3.7-flash-high` CLI) with high reasoning, as explicitly requested. Three bounded correction runs on the same route addressed independently reproduced defects in money precision, hard result-size limits, activity-key uniqueness, and registry teardown/generation safety. The OMP evidence directories are `/Users/SubhavMathur/.local/state/omp-codex-runs/CivicFlow/20260827-175436-732`, `/Users/SubhavMathur/.local/state/omp-codex-runs/CivicFlow/20260827-181718-4344`, `/Users/SubhavMathur/.local/state/omp-codex-runs/CivicFlow/20260827-182853-7146`, and `/Users/SubhavMathur/.local/state/omp-codex-runs/CivicFlow/20260827-183359-8895`.
+
+The actual worktree is still on branch `main` at `923efae8634ca311672e209065b6d2d3557fcedc`; no commit, push, merge, rebase, deploy, publish, or Site operation occurred during Phase 2 implementation. The worker added the isolated `src/webmcp` port/catalog/handler/registry layer, wired the accepted capability/activity facade into the Agent Companion, and added contract/integration coverage. Independent `npm run verify` passes formatting, lint, secret scan, typecheck, 20 unit files/118 tests, 7 contract/integration files/64 tests, production build, and 3 E2E tests. `git diff --check` passes; the `document.modelContext` scan is limited to the browser adapter/ambient boundary; the WebMCP network scan is empty. Phase 2 Gate C is validated, and the next release action is the authorized checkpoint commit/push before Phase 3.
