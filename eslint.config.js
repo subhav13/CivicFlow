@@ -1,0 +1,29 @@
+import js from '@eslint/js';
+import prettier from 'eslint-config-prettier';
+import reactHooks from 'eslint-plugin-react-hooks';
+import reactRefresh from 'eslint-plugin-react-refresh';
+import globals from 'globals';
+import tseslint from 'typescript-eslint';
+
+export default tseslint.config(
+  {
+    ignores: ['dist/', 'node_modules/', 'playwright-report/', 'test-results/'],
+  },
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+  {
+    files: ['**/*.{ts,tsx}'],
+    languageOptions: {
+      globals: globals.browser,
+    },
+  },
+  {
+    files: ['scripts/**/*.mjs', '*.{config,config.*}.{js,mjs,ts}'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
+  reactHooks.configs['recommended-latest'],
+  reactRefresh.configs.vite,
+  prettier,
+);
