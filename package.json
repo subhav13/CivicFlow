@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node scripts/clean-site-dist.mjs",
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "scan:secrets": "node scripts/scan-secrets.mjs",
