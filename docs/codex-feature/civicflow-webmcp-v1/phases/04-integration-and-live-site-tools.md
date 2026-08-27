@@ -38,12 +38,12 @@ Packets 3.1 through 3.3 below are the atomic browser, safety, and live-evidence 
 
 ### Packet 3.1 — golden-path Playwright suite
 
-- **Status:** `in-progress`
+- **Status:** `validated`
 - **Depends on:** Phase 2 Gate C
 - **Owns:** real-browser deterministic E2E journey and visible state/effect assertions
-- **RED:** `tests/e2e/civicflow-golden-path.spec.ts` fails at expected absent sections, cards, progress, capability/activity, review, manual submission, and reset assertions
+- **RED:** `tests/e2e/webmcp-integration.spec.ts` began absent and represented 10 expected browser-surface, visible-state, contextual-registration, delayed-result, no-submit, and human-completion assertions
 - **GREEN:** drive the fake port and normal UI through public surfaces; assert DOM-visible state before tool results are accepted; avoid private store access
-- **Focused gate:** `npm run test:e2e -- tests/e2e/civicflow-golden-path.spec.ts`
+- **Focused gate:** `npm run test:e2e -- tests/e2e/webmcp-integration.spec.ts`
 - **Acceptance:** E1 through the human-only completion story is reproducible in a real browser; no agent-facing submission tool or network request appears
 - **Refactor limit:** fixtures and test harness only; no product behavior changes outside an approved failing boundary
 - **Aggregate after integration:** full E2E and all unit/contract/build gates
@@ -51,12 +51,12 @@ Packets 3.1 through 3.3 below are the atomic browser, safety, and live-evidence 
 
 ### Packet 3.2 — adversarial and accessibility gates
 
-- **Status:** `planned`
+- **Status:** `validated`
 - **Depends on:** 3.1
 - **Owns:** security/content, output-size, state-corruption, race, keyboard, reduced-motion, responsive, and accessibility tests
-- **RED:** hostile/instruction-like document text, over-limit input/output, extra properties, rapid context switch, reload/corrupt storage, keyboard completion, reduced motion, or axe critical/serious fixtures fail
+- **RED:** `tests/contract/adversarial-security.test.ts` and `tests/e2e/adversarial-accessibility.spec.ts` represented 12 named failure classes for hostile text, limits, strict inputs, races, teardown, storage recovery, keyboard, reduced motion, responsive layout, accessibility semantics, and unsupported APIs
 - **GREEN:** safe plain-text rendering, compact truncation of issue lists, strict schemas, stale-context no-op behavior, resilient reload, accessible focus/landmarks, and no horizontal overflow
-- **Focused gate:** `npm run test:contract -- --run tests/contract/security.test.ts` and `npm run test:e2e -- tests/e2e/accessibility.spec.ts`
+- **Focused gate:** `npm run test:contract -- --run tests/contract/adversarial-security.test.ts` and `npm run test:e2e -- tests/e2e/adversarial-accessibility.spec.ts`
 - **Acceptance:** instruction-like filenames never change capabilities, model instructions, attestation, or submission; no serious/critical a11y findings; portal remains usable through unsupported optional APIs
 - **Refactor limit:** security/a11y fixes inside the failing boundary; no feature expansion
 - **Aggregate after integration:** full unit, contract, E2E, build, format, lint, secret scan, and typecheck
@@ -105,3 +105,14 @@ No voice, Realtime broker, provider API, public claim beyond observed evidence, 
 - Browser evidence can accidentally use a private fake rather than the public page; record the exact URL and environment.
 - A model can describe an action without invoking it; capture tool discovery, execution, revision, and visible effect separately.
 - Public testing can expose sensitive data or secrets; use synthetic seed only and inspect network/log boundaries before authorization.
+
+## Local Phase 3 execution evidence
+
+- **Implementation route:** One complete OMP task used `google-antigravity/gemini-3.7-flash` (`gemini-3.7-flash-high` CLI) at high reasoning on baseline `ed53c020510dc7ea25c9991eb0f31d65ef2b1610`; evidence: `/Users/SubhavMathur/.local/state/omp-codex-runs/CivicFlow/20260827-193634-13948`.
+- **Independent correction route:** A second bounded OMP task on the same requested model restored `reuseExistingServer: !process.env.CI` and made the delayed-result ordering assertion real; evidence: `/Users/SubhavMathur/.local/state/omp-codex-runs/CivicFlow/20260827-195356-15985`.
+- **Actual changed scope:** `playwright.config.ts`, `tests/e2e/helpers/webmcp-fixture.ts`, `tests/e2e/webmcp-integration.spec.ts`, `tests/e2e/adversarial-accessibility.spec.ts`, and `tests/contract/adversarial-security.test.ts`. No production/domain/ledger/hosting file was changed by the worker.
+- **Independent review:** Coordinator inspected the actual uncommitted files, confirmed branch `main` and HEAD `ed53c020510dc7ea25c9991eb0f31d65ef2b1610` were unchanged, verified the allowlist, and reproduced the focused suites.
+- **Focused results:** The adversarial contract suite passed 6 tests; the two new browser suites passed 19 tests with the corrected server setting. The full E2E suite passed 22 tests, the full unit suite passed 124 tests in 21 files, and the full contract/integration suite passed 70 tests in 8 files.
+- **Aggregate result:** Independent `npm run verify` passed format, lint, secret scan, typecheck, unit, contract, build, and E2E gates. `git diff --check` passed. No `document.modelContext` production boundary, network mutation, submission path, branch, or HEAD was changed.
+- **Accessibility limitation:** The repository has no axe dependency; the deterministic equivalent covers landmarks, headings, labels, dialog semantics/focus, Escape handling, keyboard completion, reduced motion, and overflow. Automated axe evidence remains an explicit future choice if required by Gate D.
+- **Gate status:** Packets 3.1 and 3.2 are locally validated. Packet 3.3 and Gate D remain `planned`/unmet because no public preview/deployment or live Site Tools route has been separately authorized. The exact remaining work is a supported public audit with dated E1–E8 discovery, execution, revision, visible-effect, and no-submit evidence.
