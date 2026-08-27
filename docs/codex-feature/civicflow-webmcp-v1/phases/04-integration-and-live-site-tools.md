@@ -2,7 +2,7 @@
 
 ## Status
 
-`planned`. This phase begins only after Gate C and a separately authorized preview/deployment route. Local deterministic integration is required before any live Site Tools interaction.
+`in-progress`. Local deterministic integration is authorized after Gate C. Public preview/deployment and live Site Tools interaction remain separately authorized and are not part of this OMP implementation dispatch.
 
 ## Goal
 
@@ -38,7 +38,7 @@ Packets 3.1 through 3.3 below are the atomic browser, safety, and live-evidence 
 
 ### Packet 3.1 — golden-path Playwright suite
 
-- **Status:** `planned`
+- **Status:** `in-progress`
 - **Depends on:** Phase 2 Gate C
 - **Owns:** real-browser deterministic E2E journey and visible state/effect assertions
 - **RED:** `tests/e2e/civicflow-golden-path.spec.ts` fails at expected absent sections, cards, progress, capability/activity, review, manual submission, and reset assertions
