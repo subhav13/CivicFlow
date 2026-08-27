@@ -10,7 +10,7 @@ Prove in a real browser that the human-visible CivicFlow state, WebMCP fake/adap
 
 ## Problem Evidence
 
-Unit and contract tests can pass while a browser fails to show a tool effect before a result resolves, loses contextual registration, or lets instruction-like document content influence behavior. The plan requires a golden Playwright journey, adversarial/accessibility coverage, and live evidence for E1–E8. Current CivicFlow has only a shell smoke test and no public Site.
+Unit and contract tests can pass while a browser fails to show a tool effect before a result resolves, loses contextual registration, or lets instruction-like document content influence behavior. The plan requires a golden Playwright journey, adversarial/accessibility coverage, and live evidence for E1–E8. At phase entry CivicFlow had only a shell smoke test and no public Site; the deterministic suites and public deployment now exist, while the live evidence boundary remains open.
 
 ## Design
 
@@ -77,9 +77,9 @@ Packets 3.1 through 3.3 below are the atomic browser, safety, and live-evidence 
 ### Packet 3.3 deployment checkpoint
 
 - **Public URL:** `https://civicflow.codesm.chatgpt.site`
-- **Deployment:** Sites version 2 succeeded after a narrow Worker root mapping fix; the first version's `/` 404 was confirmed in Sites Worker logs and corrected by mapping the root request to `/index.html`.
+- **Deployment:** Sites versions 1 and 2 returned 404 for `/` in Worker logs. Version 2 retained the explicit root-to-`/index.html` mapping, but the 404 persisted because the Vite bundle was archived at `dist/index.html`/`dist/assets` while the Sites runtime expects `dist/client/index.html`/`dist/client/assets`. Commit `196ce8c1d65c6c33ea2dd3a191f6a65f49f3ecf9` adds a clean prebuild and `dist/client` output, was published through the GitHub connector as `4cc6b8dd57059a7e8b8e646af4549b4f0151f4a8`, pushed to the Sites source branch, saved as Sites version 3, and deployed successfully. The Site is active and public at `https://civicflow.codesm.chatgpt.site`.
 - **Local gate after fix:** `npm run verify` passed with 21 unit files/124 tests, 8 contract/integration files/70 tests, 22 E2E tests, build, format, lint, secret scan, and typecheck.
-- **Live audit result:** blocked before E1–E8 execution because the in-app Browser URL policy rejected the public `codesm.chatgpt.site` page during tab claim. No alternate browser, raw network request, or indirect execution route was used, so no live discovery/execution claim is recorded.
+- **Live audit result:** the supported in-app Browser route has not yielded claimable E1–E8 interaction evidence; the earlier URL-policy rejection remains the governing limitation. Sites reports no deployment errors, and no alternate browser, raw network request, or indirect execution route was used, so no live discovery/execution claim is recorded.
 
 ## Live evaluation rows
 
