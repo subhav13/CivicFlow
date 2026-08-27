@@ -162,6 +162,46 @@ describe('CivicFlow application store', () => {
     expect(store.getState().ui.activity.at(-1)?.id).toBe('activity-2');
   });
 
+  it('ensures collision-safe unique activity IDs when repeating an ID', () => {
+    const { store } = createTestStore();
+
+    // Append same ID multiple times
+    store.appendActivity({
+      id: 'human-household-edit',
+      summary: 'First edit',
+    });
+    store.appendActivity({
+      id: 'human-household-edit',
+      summary: 'Second edit',
+    });
+    store.appendActivity({
+      id: 'human-household-edit',
+      summary: 'Third edit',
+    });
+
+    const activity = store.getState().ui.activity;
+    expect(activity).toHaveLength(3);
+
+    // Newest first
+    expect(activity[0]).toMatchObject({
+      id: 'human-household-edit-2',
+      summary: 'Third edit',
+    });
+    expect(activity[1]).toMatchObject({
+      id: 'human-household-edit-1',
+      summary: 'Second edit',
+    });
+    // First occurrence preserved unchanged
+    expect(activity[2]).toMatchObject({
+      id: 'human-household-edit',
+      summary: 'First edit',
+    });
+
+    // All IDs are strictly unique
+    const ids = activity.map((a) => a.id);
+    expect(new Set(ids).size).toBe(activity.length);
+  });
+
   it('retains changed state in memory when persistence writes fail', () => {
     const storage = new FakeStorage();
     storage.writeError = new Error('quota exceeded');

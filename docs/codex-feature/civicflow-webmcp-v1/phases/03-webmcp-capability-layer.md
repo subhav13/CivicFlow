@@ -2,7 +2,7 @@
 
 ## Status
 
-`planned`. Entry is Gate B: the human portal must be keyboard-completable and independently accepted. This phase owns the page capability surface, not the human domain contract or voice provider.
+`validated`. Entry was authorized while Phase 1 review was pending; the user has now confirmed Phase 1 review completion. The implementation and Gate C evidence were independently reviewed by the coordinator. This phase owns the page capability surface, not the human domain contract or voice provider.
 
 ## Goal
 
@@ -60,7 +60,7 @@ Packets 2.1 through 2.6 below are the atomic implementation and review tasks. Th
 
 ### Packet 2.1 — ModelContextPort and fake
 
-- **Status:** `planned`
+- **Status:** `validated`
 - **Depends on:** Phase 1 Gate B
 - **Allowlist:** ambient types, port, browser adapter, fake, and `tests/contract/model-context-port.test.ts`
 - **RED:** unavailable API, duplicate registration, abort cleanup, unknown tool, execution, `getTools`, and change notification tests fail before the boundary exists
@@ -72,7 +72,7 @@ Packets 2.1 through 2.6 below are the atomic implementation and review tasks. Th
 
 ### Packet 2.2 — tool catalog and result envelope
 
-- **Status:** `planned`
+- **Status:** `validated`
 - **Depends on:** 2.1 and Phase 0 contracts
 - **Allowlist:** `src/webmcp/tool-catalog.ts`, `src/webmcp/tool-results.ts`, and `tests/contract/tool-catalog.test.ts`
 - **RED:** exact-name, no-submit, closed-schema, parameter-limit, annotation, description-uniqueness, serialization, and 1,500-character output tests fail before catalog creation
@@ -84,7 +84,7 @@ Packets 2.1 through 2.6 below are the atomic implementation and review tasks. Th
 
 ### Packet 2.3 — static read and navigation handlers
 
-- **Status:** `planned`
+- **Status:** `validated`
 - **Depends on:** 2.2
 - **Allowlist:** handler factory, static handlers, navigation focus helper, and `tests/integration/static-read-navigation-tools.test.ts`
 - **RED:** schema rejection, no revision mutation for reads, untrusted document output, navigation selection clearing, visible activity, focus, and compact-output tests fail
@@ -96,7 +96,7 @@ Packets 2.1 through 2.6 below are the atomic implementation and review tasks. Th
 
 ### Packet 2.4 — static mutation handlers
 
-- **Status:** `planned`
+- **Status:** `validated`
 - **Depends on:** 2.3
 - **Allowlist:** mutation handlers, money/name resolvers, and `tests/integration/static-mutation-tools.test.ts`
 - **RED:** golden inputs, missing/extra fields, range and excess-precision money, owner not-found/ambiguous, duplicates/no-ops, atomic coverage, visible update-before-result, and no-submit tests fail
@@ -108,7 +108,7 @@ Packets 2.1 through 2.6 below are the atomic implementation and review tasks. Th
 
 ### Packet 2.5 — dynamic registry and contextual handlers
 
-- **Status:** `planned`
+- **Status:** `validated`
 - **Depends on:** 2.4
 - **Allowlist:** registry manager, contextual handlers, subscription hook, and `tests/integration/dynamic-registry.test.ts`
 - **RED:** appear/disappear, switched-selection, stale execution, duplicate name, abort cleanup, generation races, review-only availability, teardown, and HMR tests fail
@@ -120,7 +120,7 @@ Packets 2.1 through 2.6 below are the atomic implementation and review tasks. Th
 
 ### Packet 2.6 — capability and activity UI
 
-- **Status:** `planned`
+- **Status:** `validated`
 - **Depends on:** 2.5 and Phase 1 shell
 - **Allowlist:** `src/ui/agent-companion/`, store UI adapters if already allowed by Phase 1, and component/integration tests
 - **RED:** exact accepted snapshot, loading/error/unavailable states, newest-20 activity, polite live announcement, truthful caller label, and mobile drawer tests fail
@@ -149,3 +149,21 @@ No live ChatGPT calls, public Site creation, Site save/deploy/publish, Realtime 
 - Contextual handlers can capture stale IDs. Resolve selection at execution time and fail closed.
 - Agent Companion can become a static mock. Derive it from the accepted registry snapshot only.
 - Tool descriptions or document content can smuggle instructions. Keep inputs closed, content untrusted, and outputs compact.
+
+## Execution evidence
+
+- **Attempt date and timezone:** 2026-08-27, Asia/Kolkata.
+- **Worker route and exact model/reasoning:** OMP worker, `google-antigravity/gemini-3.7-flash` (`gemini-3.7-flash-high` CLI), high reasoning. Three bounded correction runs used the same route for serializer/activity/registry hardening and exact money precision.
+- **One-sentence routing rationale:** The user explicitly authorized the complete Phase 2 OMP route with Gemini 3.7 Flash High, and independent review required bounded corrections without changing the product boundary.
+- **Observable escalation condition:** Stop if the WebMCP draft cannot remain in the browser adapter/ambient boundary, if domain/command/persistence/Phase 1/voice/server/Sites changes are required, or if any submission capability is needed; no such condition occurred.
+- **Baseline repository, branch, and exact HEAD:** `/Users/SubhavMathur/Desktop/Subhav Main/AI Projects/CivicFlow`, branch `main`, `923efae8634ca311672e209065b6d2d3557fcedc`.
+- **Baseline status/diff summary:** The pre-dispatch Phase 2 baseline was the clean local Phase 1 commit. The requested GitHub connector push had already published the Phase 1 snapshot; Phase 2 edits remain local and uncommitted. No Phase 2 writer overlapped the OMP runs.
+- **Allowed files:** `src/webmcp/**`; `src/ui/agent-companion/**`; minimal `src/app/App.tsx`, `src/ui/layout/ApplicationShell.tsx`, `src/application/store.ts`, `vitest.contract.config.ts`; Phase 2 contract/integration tests; and the bounded correction allowlists recorded in the OMP task files under `/private/tmp/`.
+- **Actual changed files:** `src/app/App.tsx`; `src/application/store.ts`; `src/application/store.test.ts`; `src/ui/agent-companion/AgentCompanion.tsx`; `src/ui/agent-companion/AgentCompanion.test.tsx`; `src/ui/layout/ApplicationShell.tsx`; `src/webmcp/ambient.d.ts`; `browser-model-context-port.ts`; `fake-model-context-port.ts`; `index.ts`; `model-context-port.ts`; `registry-manager.ts`; `tool-catalog.ts`; `tool-handlers.ts`; `tool-results.ts`; `use-webmcp-registry.ts`; `tests/contract/model-context-port.test.ts`; `tests/contract/tool-catalog.test.ts`; `tests/integration/capability-activity-ui.test.tsx`; `tests/integration/dynamic-registry.test.ts`; `tests/integration/static-mutation-tools.test.ts`; and `tests/integration/static-read-navigation-tools.test.ts`; plus the minimal `vitest.contract.config.ts` discovery change.
+- **RED tests and observed failures:** The full-phase worker recorded RED coverage for the missing port/fake, catalog/envelope, static handlers, dynamic registry, and Agent Companion contracts before implementation. Independent review then observed a React duplicate-key warning from repeated fixed human activity IDs and reproduced valid decimal rejection for `0.29`, `0.58`, and `4950.1`; an oversized serializer case also exceeded the stated budget. These were concrete post-GREEN findings, not ignored warnings.
+- **GREEN implementation result:** All nine catalog tools now register through the narrow port; static and contextual handlers use the existing public store/command facade; contextual registration is serialized, abortable, generation-guarded, and teardown-safe; Agent Companion renders accepted capabilities and truthful activity; money checks use exact cent round-trip validation; activity IDs are unique within the retained feed; and result serialization is hard-capped at 1,500 characters with intact retained strings or a safe minimal envelope.
+- **Focused commands and exact results:** Main worker and corrections passed the focused suites: model-context port (11 tests), catalog/results (13 tests), static read/navigation (8 tests), static mutation (15 tests after precision corrections), dynamic registry (12 tests after race/teardown corrections), Agent Companion (6 tests), capability/activity integration (4 tests), and store (9 tests). The final money correction added rejection coverage for `9999999.00000001`.
+- **Aggregate commands and exact results:** Independent `npm run verify` passed `format:check`, lint, secret scan, typecheck, 20 unit files/118 tests, 7 contract/integration files/64 tests, production build, and 3 Playwright E2E tests. `git diff --check` passed. `rg -n "document\.modelContext" src` matched only `src/webmcp/browser-model-context-port.ts` and `src/webmcp/ambient.d.ts`; `rg -n "fetch|XMLHttpRequest|sendBeacon|WebSocket" src/webmcp` returned no matches.
+- **Independent reviewer and findings:** Coordinator review inspected the actual worktree and implementation, reproduced the initial decimal/serialization/activity defects, routed each correction through a bounded OMP worker, reran the complete verification pipeline, and confirmed branch/HEAD unchanged. No submission tool or network path was introduced. The `src/application/store.ts` `id-` prefix is a minimal compatibility correction so default generated entity IDs satisfy the accepted Phase 0 leading-letter identifier schema when WebMCP uses the public store facade.
+- **Status decision:** `validated`; Gate C evidence is present, the actual diff was independently inspected, all required local gates pass, and the user confirmed the Phase 1 review dependency is closed.
+- **Risks, assumptions, and unresolved decisions:** WebMCP draft syntax remains isolated to the browser adapter/ambient boundary. Live Site Tools, public hosting, voice, deployment, commit, and push were out of scope for implementation and are deferred to later authorized phases. No contradictory product or safety evidence was found.
