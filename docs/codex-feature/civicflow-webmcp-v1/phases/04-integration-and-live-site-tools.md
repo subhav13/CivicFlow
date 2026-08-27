@@ -2,7 +2,7 @@
 
 ## Status
 
-`in-progress`. Local deterministic integration is authorized after Gate C. Public preview/deployment and live Site Tools interaction remain separately authorized and are not part of this OMP implementation dispatch.
+`in-progress`. Local deterministic integration is validated, and the user-authorized public Sites deployment is complete. Live Site Tools interaction remains open because the supported in-app Browser route rejected the public URL before a tab could be claimed.
 
 ## Goal
 
@@ -64,7 +64,7 @@ Packets 3.1 through 3.3 below are the atomic browser, safety, and live-evidence 
 
 ### Packet 3.3 — live ChatGPT and Chrome compatibility audit
 
-- **Status:** `planned`
+- **Status:** `in-progress`
 - **Depends on:** 3.1 and 3.2 plus separately approved public preview
 - **Owns:** dated evidence log and minimal adapter-only syntax correction if a current WebMCP draft differs
 - **RED:** supported live model cannot discover or execute expected tools, visible state lags the result, contextual tools persist incorrectly, or no-submit evidence is absent
@@ -73,6 +73,13 @@ Packets 3.1 through 3.3 below are the atomic browser, safety, and live-evidence 
 - **Acceptance:** the public page exposes the expected static/contextual tools, mutations update the same visible application, ambiguous names fail safely, hostile content stays untrusted, and “submit it” produces no submission function or state change
 - **Refactor limit:** only `BrowserModelContextPort`/ambient types for syntactic drift; rerun all adapter/contract/integration gates after any edit
 - **Non-goals:** voice, broad hosting changes, tool redesign, or unsupported model claims
+
+### Packet 3.3 deployment checkpoint
+
+- **Public URL:** `https://civicflow.codesm.chatgpt.site`
+- **Deployment:** Sites version 2 succeeded after a narrow Worker root mapping fix; the first version's `/` 404 was confirmed in Sites Worker logs and corrected by mapping the root request to `/index.html`.
+- **Local gate after fix:** `npm run verify` passed with 21 unit files/124 tests, 8 contract/integration files/70 tests, 22 E2E tests, build, format, lint, secret scan, and typecheck.
+- **Live audit result:** blocked before E1–E8 execution because the in-app Browser URL policy rejected the public `codesm.chatgpt.site` page during tab claim. No alternate browser, raw network request, or indirect execution route was used, so no live discovery/execution claim is recorded.
 
 ## Live evaluation rows
 
@@ -115,4 +122,4 @@ No voice, Realtime broker, provider API, public claim beyond observed evidence, 
 - **Focused results:** The adversarial contract suite passed 6 tests; the two new browser suites passed 19 tests with the corrected server setting. The full E2E suite passed 22 tests, the full unit suite passed 124 tests in 21 files, and the full contract/integration suite passed 70 tests in 8 files.
 - **Aggregate result:** Independent `npm run verify` passed format, lint, secret scan, typecheck, unit, contract, build, and E2E gates. `git diff --check` passed. No `document.modelContext` production boundary, network mutation, submission path, branch, or HEAD was changed.
 - **Accessibility limitation:** The repository has no axe dependency; the deterministic equivalent covers landmarks, headings, labels, dialog semantics/focus, Escape handling, keyboard completion, reduced motion, and overflow. Automated axe evidence remains an explicit future choice if required by Gate D.
-- **Gate status:** Packets 3.1 and 3.2 are locally validated. Packet 3.3 and Gate D remain `planned`/unmet because no public preview/deployment or live Site Tools route has been separately authorized. The exact remaining work is a supported public audit with dated E1–E8 discovery, execution, revision, visible-effect, and no-submit evidence.
+- **Gate status:** Packets 3.1 and 3.2 are locally validated, and Packet 3.3 is active after the authorized public deployment. Gate D remains unmet because the supported live browser route was blocked before E1–E8 evidence could be collected. The exact remaining work is a supported public audit with dated E1–E8 discovery, execution, revision, visible-effect, and no-submit evidence.
