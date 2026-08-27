@@ -38,7 +38,7 @@ export class BrowserModelContextPort implements ModelContextPort {
         description: definition.description,
         inputSchema: definition.inputSchema,
         annotations: definition.annotations,
-        handler: definition.handler,
+        execute: definition.handler,
       },
       options,
     );

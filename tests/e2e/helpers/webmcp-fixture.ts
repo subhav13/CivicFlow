@@ -30,7 +30,7 @@ export async function installBrowserModelContext(page: Page): Promise<void> {
         readOnlyHint?: boolean;
         untrustedContentHint?: boolean;
       };
-      handler: (
+      execute: (
         input: unknown,
         options?: { signal?: AbortSignal },
       ) => Promise<string> | string;
@@ -104,7 +104,7 @@ export async function installBrowserModelContext(page: Page): Promise<void> {
         if (!entry) {
           throw new Error(`Tool not registered: ${tool.name}`);
         }
-        const result = await entry.handler(input, options);
+        const result = await entry.execute(input, options);
         if (executionDelayMs > 0) {
           await new Promise((resolve) => setTimeout(resolve, executionDelayMs));
         }
