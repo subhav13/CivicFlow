@@ -35,6 +35,84 @@ describe('ModelContextPort Contract', () => {
         ),
       ).rejects.toThrow(/unavailable/i);
     });
+
+    it('browser adapter sends execute (not handler) to document.modelContext.registerTool', async () => {
+      // Strict browser-like double: only accepts the current WebMCP contract property `execute`.
+      // Rejects any registration that uses `handler` instead.
+      const registrations: unknown[] = [];
+      const strictBrowserContext = {
+        registerTool(definition: unknown): Promise<void> {
+          const def = definition as Record<string, unknown>;
+          if (typeof def['execute'] !== 'function') {
+            return Promise.reject(
+              new Error(
+                `WebMCP contract violation: tool registration must use 'execute', got keys: ${Object.keys(def).join(', ')}`,
+              ),
+            );
+          }
+          if (typeof def['handler'] === 'function') {
+            return Promise.reject(
+              new Error(
+                `WebMCP contract violation: 'handler' is an internal property and must not be forwarded to the browser API`,
+              ),
+            );
+          }
+          registrations.push(definition);
+          return Promise.resolve();
+        },
+        getTools: () => Promise.resolve([]),
+        executeTool: () => Promise.resolve(''),
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      };
+
+      // Install the strict browser double on document.
+      Object.defineProperty(document, 'modelContext', {
+        value: strictBrowserContext,
+        configurable: true,
+        writable: true,
+      });
+
+      try {
+        const executeSpy = vi.fn(async () => JSON.stringify({ ok: true }));
+        const port = new BrowserModelContextPort();
+        expect(port.isAvailable()).toBe(true);
+
+        const definition: ToolDefinition = {
+          name: 'get_application_progress',
+          title: 'Get Application Progress',
+          description: 'Returns current progress',
+          inputSchema: { type: 'object', additionalProperties: false },
+          annotations: { readOnlyHint: true },
+          handler: executeSpy,
+        };
+
+        // Must succeed with the strict browser double (execute present, handler absent).
+        await port.registerTool(definition);
+
+        // The registration must have been forwarded with execute, not handler.
+        expect(registrations).toHaveLength(1);
+        const sent = registrations[0] as Record<string, unknown>;
+        expect(typeof sent['execute']).toBe('function');
+        expect('handler' in sent).toBe(false);
+
+        // The execute callback must invoke the internal handler.
+        const executeCallback = sent['execute'] as (
+          input: unknown,
+          options?: { signal?: AbortSignal },
+        ) => Promise<string>;
+        const result = await executeCallback({ applicantId: 'test' });
+        expect(executeSpy).toHaveBeenCalledWith({ applicantId: 'test' });
+        expect(result).toBe(JSON.stringify({ ok: true }));
+      } finally {
+        // Restore the absent modelContext for subsequent tests.
+        Object.defineProperty(document, 'modelContext', {
+          value: undefined,
+          configurable: true,
+          writable: true,
+        });
+      }
+    });
   });
 
   describe('FakeModelContextPort', () => {

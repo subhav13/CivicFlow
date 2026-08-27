@@ -15,7 +15,7 @@ export interface ModelContextToolDefinition {
     readOnlyHint?: boolean;
     untrustedContentHint?: boolean;
   };
-  handler: (
+  execute: (
     input: unknown,
     options?: { signal?: AbortSignal },
   ) => Promise<string> | string;
