@@ -9,7 +9,7 @@ function goTo(section: string) {
   });
   fireEvent.click(
     within(navigation).getByRole('button', {
-      name: new RegExp(`^\\d{2} ${section}`, 'i'),
+      name: new RegExp(`^\\d{2}\\s+.*${section}`, 'i'),
     }),
   );
 }
@@ -72,5 +72,50 @@ describe('Capability and Activity UI Integration', () => {
     ).toBeNull();
     expect(companion.textContent).not.toMatch(/submit_application/i);
     expect(companion.textContent).not.toMatch(/submitDemo/i);
+  });
+
+  it('highlights affected record and renders operation status after human mutation', async () => {
+    render(<App />);
+
+    goTo('household');
+    fireEvent.change(screen.getByLabelText('Household member first name'), {
+      target: { value: 'Emma' },
+    });
+    fireEvent.change(screen.getByLabelText('Household member last name'), {
+      target: { value: 'Carter' },
+    });
+    fireEvent.change(screen.getByLabelText('Household member age'), {
+      target: { value: '7' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Add household member' }),
+    );
+
+    // Operation status renders truthful human terminal feedback
+    const opStatus = screen.getByTestId('operation-status');
+    expect(opStatus).toBeInTheDocument();
+    expect(opStatus).toHaveAttribute('data-source', 'human');
+    expect(opStatus).toHaveAttribute('data-phase', 'succeeded');
+    expect(opStatus).toHaveTextContent(/Added household member/i);
+
+    // The newly created record card receives recent-effect data attributes and styling class
+    const emmaCard = screen.getByText('Emma Carter').closest('article');
+    expect(emmaCard).not.toBeNull();
+    expect(emmaCard).toHaveAttribute('data-recent-effect', 'created');
+    expect(emmaCard?.getAttribute('data-recent-action-id')).toBeTruthy();
+    expect(emmaCard).toHaveClass('is-recent-effect');
+  });
+  it('never shows mutation operation status for pure section navigation', () => {
+    render(<App />);
+
+    // Pure navigation across sections
+    goTo('household');
+    expect(screen.queryByTestId('operation-status')).toBeNull();
+
+    goTo('income');
+    expect(screen.queryByTestId('operation-status')).toBeNull();
+
+    goTo('coverage');
+    expect(screen.queryByTestId('operation-status')).toBeNull();
   });
 });

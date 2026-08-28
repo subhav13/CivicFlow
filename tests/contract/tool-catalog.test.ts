@@ -17,8 +17,8 @@ import {
 describe('Tool Catalog Contract', () => {
   const ajv = new Ajv({ strict: true, allErrors: true });
 
-  it('contains exactly the nine specified tool names', () => {
-    const expectedNine: CivicFlowToolName[] = [
+  it('preserves the original nine tools and contains exactly the ten specified tool names', () => {
+    const originalNine: CivicFlowToolName[] = [
       'get_application_progress',
       'navigate_to_section',
       'add_household_member',
@@ -30,22 +30,36 @@ describe('Tool Catalog Contract', () => {
       'review_application',
     ];
 
-    expect([...CIVICFLOW_TOOL_NAMES].sort()).toEqual([...expectedNine].sort());
-    expect(Object.keys(TOOL_CATALOG).sort()).toEqual([...expectedNine].sort());
-    expect(CIVICFLOW_TOOL_NAMES).toHaveLength(9);
+    const expectedTen: CivicFlowToolName[] = [
+      ...originalNine,
+      'get_next_actions' as CivicFlowToolName,
+    ];
+
+    // Original nine tools are preserved
+    for (const tool of originalNine) {
+      expect(CIVICFLOW_TOOL_NAMES).toContain(tool);
+      expect(TOOL_CATALOG).toHaveProperty(tool);
+    }
+
+    // Exactly ten tools in total
+    expect([...CIVICFLOW_TOOL_NAMES].sort()).toEqual([...expectedTen].sort());
+    expect(Object.keys(TOOL_CATALOG).sort()).toEqual([...expectedTen].sort());
+    expect(CIVICFLOW_TOOL_NAMES).toHaveLength(10);
   });
 
-  it('partitions tools into static and contextual subsets', () => {
+  it('partitions tools into seven static and three contextual subsets', () => {
     expect([...STATIC_TOOL_NAMES].sort()).toEqual(
       [
         'get_application_progress',
         'navigate_to_section',
+        'get_next_actions' as CivicFlowToolName,
         'add_household_member',
         'add_income_source',
         'set_current_coverage',
         'list_uploaded_documents',
       ].sort(),
     );
+    expect(STATIC_TOOL_NAMES).toHaveLength(7);
 
     expect([...CONTEXTUAL_TOOL_NAMES].sort()).toEqual(
       [
@@ -54,6 +68,7 @@ describe('Tool Catalog Contract', () => {
         'review_application',
       ].sort(),
     );
+    expect(CONTEXTUAL_TOOL_NAMES).toHaveLength(3);
   });
 
   it('never contains "submit" in any tool name, title, description, or parameter', () => {
@@ -115,11 +130,20 @@ describe('Tool Catalog Contract', () => {
     expect(TOOL_CATALOG.get_application_progress.annotations).toEqual({
       readOnlyHint: true,
     });
+    expect(
+      (
+        TOOL_CATALOG as Record<
+          string,
+          { annotations?: Record<string, boolean> }
+        >
+      ).get_next_actions?.annotations,
+    ).toEqual({
+      readOnlyHint: true,
+    });
     expect(TOOL_CATALOG.list_uploaded_documents.annotations).toEqual({
       readOnlyHint: true,
       untrustedContentHint: true,
     });
-    // review_application is NOT read-only because it changes UI review highlights
     expect(
       TOOL_CATALOG.review_application.annotations?.readOnlyHint,
     ).toBeFalsy();

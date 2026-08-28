@@ -124,6 +124,44 @@ describe('Packet 3.2 Contract & Integration Safety Gates', () => {
     expect(parsedFail.error).toBeDefined();
   });
 
+  // Generate oversized list_uploaded_documents result with 20 documents
+  const massiveDocs = Array.from({ length: 20 }, (_, i) => ({
+    kind: 'other' as const,
+    displayName: `Hostile filename <script>alert(${i})</script> — payload_${i}_${'x'.repeat(60)}.pdf`,
+    status: 'attached_demo' as const,
+  }));
+  const docResult = successResult(
+    'list_uploaded_documents',
+    'act-oversized-docs',
+    false,
+    'Found 20 attached document(s).',
+    {
+      documents: massiveDocs,
+      count: 20,
+      requirements: [
+        {
+          id: 'proof_of_income',
+          kind: 'proof_of_income',
+          label: 'Proof of income',
+          required: false,
+          status: 'optional',
+          reason:
+            'No proof of income required when zero household income is recorded.',
+        },
+      ],
+      missingRequiredCount: 0,
+    },
+    3,
+    'Listed documents',
+  );
+
+  const serializedDocs = serializeToolResult(docResult);
+  expect(serializedDocs.length).toBeLessThanOrEqual(1500);
+  const parsedDocs = JSON.parse(serializedDocs);
+  expect(parsedDocs.ok).toBe(true);
+  expect(parsedDocs.tool).toBe('list_uploaded_documents');
+  expect(parsedDocs.stateRevision).toBe(3);
+
   it('4. extra properties in tool inputs are rejected', async () => {
     const handlers = createStaticToolHandlers(store);
     const initialRevision = store.getState().application.revision;

@@ -17,6 +17,8 @@ export type PersistenceNotice = 'recovered' | 'save_failed' | null;
 export interface HydratedApplication {
   application: ApplicationState;
   persistenceNotice: PersistenceNotice;
+  loadedFromStorage?: boolean;
+  storageUnavailable?: boolean;
 }
 
 export type SaveApplicationResult =
@@ -62,6 +64,7 @@ export function loadApplication(
     return {
       application: createDemoApplicationSeed(),
       persistenceNotice: null,
+      storageUnavailable: true,
     };
   }
 
@@ -86,6 +89,7 @@ export function loadApplication(
     return {
       application: validateApplicationState(parsed),
       persistenceNotice: null,
+      loadedFromStorage: true,
     };
   } catch {
     return recoveredApplication();

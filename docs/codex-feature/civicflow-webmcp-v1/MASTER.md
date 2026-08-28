@@ -114,6 +114,8 @@ The exact nine names are:
 
 `get_application_progress`, `navigate_to_section`, `add_household_member`, `update_household_member`, `add_income_source`, `update_income_source`, `set_current_coverage`, `list_uploaded_documents`, and `review_application`.
 
+These nine names remain the accepted P0 baseline. The separately planned [CivicFlow visible collaboration UX ledger](../civicflow-collaboration-ux-v1/MASTER.md) may add one read-only `get_next_actions` capability after its own contract gate. That additive enhancement must not rename or weaken the nine baseline capabilities, expose submission, or be claimed as implemented before its independent acceptance.
+
 The first, navigation, add, coverage, and document tools are static. Household and income updates are contextual to a current selection. Review is available only while Review & Sign is active. Read-only annotations are applied to progress and document listing; document listing also marks user-controlled document text as untrusted. Every input is a closed runtime-validated object, outputs are compact JSON strings capped at 1,500 characters, and no tool name contains `submit`.
 
 Only `BrowserModelContextPort` may touch `document.modelContext`. The registry manager serializes asynchronous registration, aborts obsolete contextual registrations, rejects duplicate names, invalidates old generations, and exposes the accepted runtime snapshot to the capability panel. Contextual handlers resolve selection at execution time and return `CONTEXT_STALE` without mutation when selection is absent or deleted.
@@ -132,6 +134,10 @@ The provider-neutral `CurrentToolSurface` snapshots and executes current WebMCP 
 | Phase 3 — integration and live Site Tools | [04-integration-and-live-site-tools.md](phases/04-integration-and-live-site-tools.md) | `in-progress` | Phase 2               | Gate D: supported-route live evidence  |
 | Phase 4 — optional voice                  | [05-optional-voice.md](phases/05-optional-voice.md)                                   | `planned`     | Gate D                | Gate E: secure authorized voice or cut |
 | Phase 5 — polish and release              | [06-polish-release-submission.md](phases/06-polish-release-submission.md)             | `planned`     | P0 and voice decision | Gate F: public release package         |
+
+### Companion enhancement ledger
+
+Post-P0 improvements for truthful operation feedback, stronger progress guidance, recoverable Site Tool failures, human-only undo, mobile navigation, onboarding, and document readiness are specified in [CivicFlow visible collaboration UX v1](../civicflow-collaboration-ux-v1/MASTER.md). The selected local hackathon path is Phases 1–3 plus companion Phase 5 and local 6.1–6.3. The 2026-08-28 MSW review admitted five judge-facing fixes in Packets M1–M2; those packets are now independently accepted through the OMP Gemini 3.7 Flash High route. CR-01 and CR-07 are documented non-blocking hackathon limitations. Companion Phase 4 undo remains explicitly deferred and live Packet 6.4 remains separately authorized. Parent Gate F must include the accepted collaboration-UX evidence before the final release claim. Optional voice remains independently includable or cut.
 
 Packets are dependency ordered and cannot be combined across a phase gate. One writer owns a packet at a time. Shared-contract changes return to the owning earlier packet.
 

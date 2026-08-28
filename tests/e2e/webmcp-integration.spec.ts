@@ -36,7 +36,7 @@ test.describe.serial('WebMCP real-browser golden journey (Packet 3.1)', () => {
     await page.close();
   });
 
-  test('1. the browser-visible model-context surface can be installed before app load and discovers the six static tools', async () => {
+  test('1. the browser-visible model-context surface can be installed before app load and discovers the seven static tools', async () => {
     await expect(
       page.getByRole('heading', { name: 'CivicFlow synthetic demo' }),
     ).toBeVisible();
@@ -48,6 +48,7 @@ test.describe.serial('WebMCP real-browser golden journey (Packet 3.1)', () => {
       'add_household_member',
       'add_income_source',
       'get_application_progress',
+      'get_next_actions',
       'list_uploaded_documents',
       'navigate_to_section',
       'set_current_coverage',
@@ -56,7 +57,7 @@ test.describe.serial('WebMCP real-browser golden journey (Packet 3.1)', () => {
     // Capability panel reflects active WebMCP integration
     await expect(page.getByText('WebMCP Active')).toBeVisible();
     await expect(
-      page.getByText('6 Site Tools currently available.'),
+      page.getByText('7 Site Tools currently available.'),
     ).toBeVisible();
   });
 

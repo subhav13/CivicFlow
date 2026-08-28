@@ -5,6 +5,8 @@ import {
   type AttachDemoDocumentInput,
 } from '../../application/commands';
 import type { DemoDocumentKind } from '../../domain';
+import { getDocumentReadiness } from '../../domain/document-readiness';
+import { DocumentReadinessChecklist } from '../documents/DocumentReadinessChecklist';
 import {
   ActionFeedback,
   EmptyState,
@@ -59,11 +61,11 @@ export function DocumentsSection({
   dispatch,
   disabled,
 }: BaseSectionProps) {
+  const readiness = getDocumentReadiness(application);
   const [receipt, setReceipt] = useState<ReturnType<
     BaseSectionProps['dispatch']
   > | null>(null);
-
-  function attach(preset: DocumentPreset) {
+  function attach(preset: AttachDemoDocumentInput) {
     const nextReceipt = dispatch(
       (state, context) => attachDemoDocument(state, preset, context),
       {
@@ -83,6 +85,13 @@ export function DocumentsSection({
         eyebrow="Synthetic evidence"
         title="Documents"
       />
+      <SectionPanel title="Document readiness checklist">
+        <DocumentReadinessChecklist
+          requirements={readiness.requirements}
+          onAttachPreset={attach}
+          disabled={disabled}
+        />
+      </SectionPanel>
       <SectionPanel title="Attach a demo preset" tone="soft">
         <p className="helper-copy">
           These are labels only: CivicFlow never opens a file picker, reads a
