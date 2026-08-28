@@ -7,7 +7,7 @@
 - **Current active phase:** Phase 3 — integration and live Site Tools
 - **Current next phase:** Phase 4 — optional voice (after Gate D)
 - **Dependency rule:** integrate strictly in numeric order; a later phase cannot repair an earlier phase's contract
-- **Current implementation checkpoint:** `/Users/SubhavMathur/Desktop/Subhav Main/AI Projects/CivicFlow`, branch `main`, source commit `7a15a7d0f0afa7c58959dba82825b36c47954052`, with the matching Phase 3 snapshot published to GitHub as remote commit `6d70ca74177e0a3dee5c6c2d89834c066ec52260`
+- **Current implementation checkpoint:** `/Users/SubhavMathur/Desktop/Subhav Main/AI Projects/CivicFlow`, branch `main`, clean pre-planning source commit `801a165ff8f115d6a4801b1f33d087508104ec04`; the equivalent four-file WebMCP compatibility change was published through the GitHub connector as remote commit `2781fd587a22700978be7a324e1df654af80e34c` and deployed as Sites version 4
 
 ## Phase routing table
 
@@ -46,6 +46,14 @@ Each phase is divided into atomic packets in its phase document. A packet must f
 
 Phase 0 was independently accepted on 2026-08-27 after a clean lockfile installation, 32 unit tests across five files, typecheck, lint, formatting, secret scan, production build, Playwright smoke, and worktree scope review. At the time of that gate the Phase 2 contract suite was intentionally empty; the foundation gate did not require that later suite. Phase 2 now supplies the contract/integration tests and the current aggregate verification passes. See [01-foundation.md](01-foundation.md) for the detailed record.
 
-Phase 1 execution began on 2026-08-27 and is validated after the user's review confirmation and coordinator evidence check. Phase 2 was explicitly authorized during that review window and is also validated after independent diff and gate review. Phase 3 local browser integration is validated, the requested Sites project is public and deployed at `https://civicflow.codesm.chatgpt.site`, and the source checkpoint is committed locally at `7a15a7d0f0afa7c58959dba82825b36c47954052` and published through the GitHub connector as `6d70ca74177e0a3dee5c6c2d89834c066ec52260`. No overlapping writer is active. Packet 3.3 remains open only for supported live E1–E8 Site Tools evidence.
+Phase 1 execution began on 2026-08-27 and is validated after the user's review confirmation and coordinator evidence check. Phase 2 was explicitly authorized during that review window and is also validated after independent diff and gate review. Phase 3 local browser integration is validated, the requested Sites project is public at `https://civicflow.codesm.chatgpt.site`, and the current compatibility checkpoint is local commit `801a165ff8f115d6a4801b1f33d087508104ec04`, connector-published remote commit `2781fd587a22700978be7a324e1df654af80e34c`, and Sites version 4. Supported live Site Tools successfully added a household member, added income, atomically set coverage for two people, read progress, and navigated to Review & Sign. Packet 3.3 remains open until its complete E1–E8 evidence table and independent acceptance are recorded; these observed calls do not silently mark Gate D validated.
 
 Phase 2 Gate C evidence is recorded in [03-webmcp-capability-layer.md](03-webmcp-capability-layer.md): all nine fake-port tools, dynamic lifecycle/race cases, compact results, activity/capability UI, exact-cent money validation, and no-submit/network boundaries pass the focused and aggregate checks. The checkpoint commits and GitHub publication are complete. Phase 3 Packets 3.1 and 3.2 are locally validated, and the authorized public Site is deployed at `https://civicflow.codesm.chatgpt.site`. Packet 3.3 remains open because the supported in-app Browser route rejected the public Site URL before live E1–E8 tool evidence could be collected; no alternate route was used.
+
+The 2026-08-28 collaboration-overlay MSW review does not change the historical
+parent Phase 0–2 decisions. It admitted five judge-facing fixes in companion
+Packets M1–M2, which are now independently accepted; companion UX Gates A, B,
+C, E, and local Gate F are green for the selected local hackathon cut. CR-01
+and CR-07 remain documented non-blocking hackathon limitations. Parent release
+claims may carry this accepted local evidence, while live Packet 6.4 and final
+release packaging remain separately authorized work.

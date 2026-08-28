@@ -8,6 +8,7 @@ export type { CivicFlowToolName };
 export const CIVICFLOW_TOOL_NAMES: readonly CivicFlowToolName[] = [
   'get_application_progress',
   'navigate_to_section',
+  'get_next_actions',
   'add_household_member',
   'update_household_member',
   'add_income_source',
@@ -20,12 +21,12 @@ export const CIVICFLOW_TOOL_NAMES: readonly CivicFlowToolName[] = [
 export const STATIC_TOOL_NAMES: readonly CivicFlowToolName[] = [
   'get_application_progress',
   'navigate_to_section',
+  'get_next_actions',
   'add_household_member',
   'add_income_source',
   'set_current_coverage',
   'list_uploaded_documents',
 ] as const;
-
 export const CONTEXTUAL_TOOL_NAMES: readonly CivicFlowToolName[] = [
   'update_household_member',
   'update_income_source',
@@ -67,6 +68,13 @@ export const GetApplicationProgressInputSchema = Type.Object(
 export type GetApplicationProgressInput = Static<
   typeof GetApplicationProgressInputSchema
 >;
+
+// 1b. get_next_actions Schema
+export const GetNextActionsInputSchema = Type.Object(
+  {},
+  { additionalProperties: false },
+);
+export type GetNextActionsInput = Static<typeof GetNextActionsInputSchema>;
 
 // 2. navigate_to_section Schema
 export const NavigateToSectionInputSchema = Type.Object(
@@ -292,6 +300,19 @@ export const TOOL_CATALOG: Readonly<
     description:
       'Get current completion percentage, section statuses, and blocking review issues for the synthetic application.',
     inputSchema: GetApplicationProgressInputSchema as unknown as Record<
+      string,
+      unknown
+    >,
+    annotations: {
+      readOnlyHint: true,
+    },
+  },
+  get_next_actions: {
+    name: 'get_next_actions',
+    title: 'Get Next Actions',
+    description:
+      'Get the next bounded actions for completing the synthetic application.',
+    inputSchema: GetNextActionsInputSchema as unknown as Record<
       string,
       unknown
     >,

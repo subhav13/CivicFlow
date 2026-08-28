@@ -32,3 +32,10 @@ export {
   type RegistryManagerOptions,
 } from './registry-manager';
 export { useWebMcpRegistry } from './use-webmcp-registry';
+export {
+  getRecoveryDescriptor,
+  toSerializableRecovery,
+  type RecoveryDescriptor,
+  type RecoveryContext,
+  type SerializableRecovery,
+} from './recovery';

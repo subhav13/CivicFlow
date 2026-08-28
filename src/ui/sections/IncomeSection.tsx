@@ -12,6 +12,7 @@ import {
 } from '../../domain';
 import { formatCentsAsDollars, parseDollarsToCents } from '../currency';
 import { TextField, SelectField } from '../components/FormField';
+import type { RecentEffect } from '../../application/store';
 import {
   ActionFeedback,
   EmptyState,
@@ -71,14 +72,15 @@ function draftFromIncome(
 interface IncomeSectionProps extends BaseSectionProps {
   onSelect: (id: string | null) => void;
   selectedId: string | null;
+  recentEffect?: RecentEffect | null;
 }
-
 export function IncomeSection({
   application,
   dispatch,
   disabled,
   onSelect,
   selectedId,
+  recentEffect,
 }: IncomeSectionProps) {
   const people = getApplicantAndHouseholdPeople(application);
   const hasRecordedIncome = application.incomeSources.length > 0;
@@ -217,11 +219,19 @@ export function IncomeSection({
               );
               const name = `${income.employerName}`;
               const isSelected = selectedId === income.id;
+              const isRecent = Boolean(
+                recentEffect?.entityIds.includes(income.id),
+              );
               return (
                 <article
-                  className={`record-card${isSelected ? ' is-selected' : ''}`}
+                  className={`record-card${isSelected ? ' is-selected' : ''}${isRecent ? ' is-recent-effect' : ''}`}
                   key={income.id}
                   role="listitem"
+                  data-entity-id={income.id}
+                  data-recent-effect={isRecent ? recentEffect?.kind : undefined}
+                  data-recent-action-id={
+                    isRecent ? recentEffect?.actionId : undefined
+                  }
                 >
                   <button
                     aria-label={`${isSelected ? 'Deselect' : 'Select'} income ${name}`}

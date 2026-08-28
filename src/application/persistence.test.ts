@@ -90,4 +90,35 @@ describe('application persistence', () => {
     expect(saveApplication(storage, application)).toEqual({ status: 'failed' });
     expect(application).toEqual(createDemoApplicationSeed());
   });
+
+  it('identifies when valid state was loaded from storage vs default seed', () => {
+    const storage = new FakeStorage();
+    const seeded = loadApplication(storage);
+    expect(seeded.loadedFromStorage).toBeFalsy();
+
+    const validApp = {
+      ...createDemoApplicationSeed(),
+      revision: 3,
+    };
+    storage.setItem(APPLICATION_STORAGE_KEY, JSON.stringify(validApp));
+    const loaded = loadApplication(storage);
+    expect(loaded.loadedFromStorage).toBe(true);
+    expect(loaded.application.revision).toBe(3);
+  });
+
+  it('identifies unavailable storage and returns deterministic seed with storageUnavailable flag', () => {
+    const loaded = loadApplication(null);
+    expect(loaded).toEqual({
+      application: createDemoApplicationSeed(),
+      persistenceNotice: null,
+      storageUnavailable: true,
+    });
+  });
+
+  it('returns unavailable status when saving to unavailable storage', () => {
+    const application = createDemoApplicationSeed();
+    expect(saveApplication(null, application)).toEqual({
+      status: 'unavailable',
+    });
+  });
 });

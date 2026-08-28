@@ -2,7 +2,13 @@
 
 ## Status
 
-`planned`. This phase is not authorized to deploy or publish. It starts after the P0 live decision and the explicit voice include/cut decision.
+`planned`. This phase is not authorized to deploy or publish. It starts after
+the P0 live decision, the explicit voice include/cut decision, and inclusion of
+the reaccepted companion collaboration UX Gates A, B, C, and E plus retained
+local Gate F when that selected enhancement cut is being released. Packets
+M1–M2 closed the five judge-facing corrections; companion Phase 4 undo is
+deferred for the current path, and companion live Packet 6.4 remains separately
+authorized.
 
 ## Goal
 
@@ -18,7 +24,7 @@ The current repository is public-facing in intent but has no README, license, re
 - Hosting uses ChatGPT Sites by default through the existing Vite capability path. `.openai/hosting.json`, Vite integration, headers, and environment configuration change only when deployment is separately authorized and the packet allowlist names them.
 - Public deployment must be anonymous as intended, HTTPS, reload/deep-link safe, secret-free, and functional when WebMCP or voice is unavailable. Voice is disabled unless Gate E passed and the user explicitly authorizes public enablement.
 - The repository package explains synthetic limitations, setup, tests, browser/Site Tools prerequisites, deployment boundary, known limitations, and the exact observed feature claims. A short public video demonstrates live WebMCP rather than slides alone only after current rules are reverified.
-- An independent Sol reviewer compares the actual release commit, deployment identifier, public URL, video, and evidence rows before recording GO or NO-GO.
+- An independent Sol reviewer compares the actual release commit, deployment identifier, public URL, video, and evidence rows before recording GO or NO-GO; when the selected cut includes companion Phase 5, the reviewer also carries forward its Gate E evidence and the explicit Phase 4 undo deferral.
 
 ## Likely Files
 

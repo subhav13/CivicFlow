@@ -1,10 +1,10 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { AgentCompanion } from './AgentCompanion';
 import type { ActivityEntry, CapabilitySummary } from '../../application/store';
 
-describe('AgentCompanion Component', () => {
+describe('AgentCompanion Component (Packet 2.3)', () => {
   const sampleCapabilities: CapabilitySummary[] = [
     {
       id: 'get_application_progress',
@@ -21,15 +21,99 @@ describe('AgentCompanion Component', () => {
       id: 'act-1',
       summary: 'Added household member Emma Carter',
       source: 'webmcp',
+      status: 'succeeded',
+      section: 'household',
       occurredAt: '2026-08-27T12:00:00.000Z',
+      beforeRevision: 0,
+      afterRevision: 1,
     },
     {
       id: 'act-2',
       summary: 'Navigated to Income section',
       source: 'human',
+      status: 'succeeded',
+      section: 'income',
       occurredAt: '2026-08-27T12:01:00.000Z',
+      beforeRevision: 1,
+      afterRevision: 1,
     },
   ];
+
+  it('renders latest activity BEFORE capabilities in accessible DOM order', () => {
+    render(
+      <AgentCompanion
+        capabilities={sampleCapabilities}
+        activity={sampleActivity}
+        isOpen={false}
+        onClose={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+
+    const activityHeading = screen.getByRole('heading', {
+      name: /latest activity/i,
+    });
+    const capabilitiesHeading = screen.getByRole('heading', {
+      name: /page capabilities/i,
+    });
+
+    // Activity heading must precede capabilities heading in document order
+    const position =
+      activityHeading.compareDocumentPosition(capabilitiesHeading);
+    expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('exposes truthful source, status, section, time, and revision transition', () => {
+    render(
+      <AgentCompanion
+        capabilities={sampleCapabilities}
+        activity={sampleActivity}
+        isOpen={false}
+        onClose={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+    const firstEntry = document.querySelector('.activity-entry')!;
+    expect(firstEntry).not.toBeNull();
+    expect(
+      within(firstEntry as HTMLElement).getByText(
+        'Added household member Emma Carter',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(firstEntry as HTMLElement).getByText('Agent action'),
+    ).toBeInTheDocument();
+    expect(
+      within(firstEntry as HTMLElement).getByText('succeeded'),
+    ).toBeInTheDocument();
+    expect(
+      within(firstEntry as HTMLElement).getByText('household'),
+    ).toBeInTheDocument();
+    expect(
+      within(firstEntry as HTMLElement).getByText(/r0 → r1/i),
+    ).toBeInTheDocument();
+
+    const timeEl = document.querySelector(
+      'time[dateTime="2026-08-27T12:00:00.000Z"]',
+    );
+    expect(timeEl).not.toBeNull();
+  });
+
+  it('retains full activity history in progressive disclosure', () => {
+    render(
+      <AgentCompanion
+        capabilities={sampleCapabilities}
+        activity={sampleActivity}
+        isOpen={false}
+        onClose={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+
+    // Full activity list or disclosure
+    expect(screen.getByText(/all activity/i)).toBeInTheDocument();
+    expect(screen.getByText('Navigated to Income section')).toBeInTheDocument();
+  });
 
   it('renders available capabilities dynamically from props', () => {
     render(
@@ -59,24 +143,6 @@ describe('AgentCompanion Component', () => {
     );
 
     expect(screen.getByText(/no site tools are enabled/i)).toBeInTheDocument();
-  });
-
-  it('renders recent activity with truthful "Agent action" attribution', () => {
-    render(
-      <AgentCompanion
-        capabilities={sampleCapabilities}
-        activity={sampleActivity}
-        isOpen={false}
-        onClose={() => {}}
-        onOpen={() => {}}
-      />,
-    );
-
-    expect(
-      screen.getByText('Added household member Emma Carter'),
-    ).toBeInTheDocument();
-    expect(screen.getByText('Agent action')).toBeInTheDocument();
-    expect(screen.getByText('Human action')).toBeInTheDocument();
   });
 
   it('provides accessible polite live announcements for status', () => {

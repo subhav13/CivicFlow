@@ -6,6 +6,7 @@ import {
   updateHouseholdMember,
 } from '../../application/commands';
 import { RELATIONSHIPS, type Relationship } from '../../domain';
+import type { RecentEffect } from '../../application/store';
 import { TextField, SelectField } from '../components/FormField';
 import {
   ActionFeedback,
@@ -79,14 +80,15 @@ function selectedDraftFromMember(member: {
 interface HouseholdSectionProps extends BaseSectionProps {
   onSelect: (id: string | null) => void;
   selectedId: string | null;
+  recentEffect?: RecentEffect | null;
 }
-
 export function HouseholdSection({
   application,
   dispatch,
   disabled,
   onSelect,
   selectedId,
+  recentEffect,
 }: HouseholdSectionProps) {
   const [draft, setDraft] = useState<MemberDraft>(emptyDraft);
   const [editDraft, setEditDraft] = useState<MemberDraft | null>(null);
@@ -219,11 +221,19 @@ export function HouseholdSection({
             {application.householdMembers.map((member) => {
               const name = `${member.firstName} ${member.lastName}`;
               const isSelected = selectedId === member.id;
+              const isRecent = Boolean(
+                recentEffect?.entityIds.includes(member.id),
+              );
               return (
                 <article
-                  className={`record-card${isSelected ? ' is-selected' : ''}`}
+                  className={`record-card${isSelected ? ' is-selected' : ''}${isRecent ? ' is-recent-effect' : ''}`}
                   key={member.id}
                   role="listitem"
+                  data-entity-id={member.id}
+                  data-recent-effect={isRecent ? recentEffect?.kind : undefined}
+                  data-recent-action-id={
+                    isRecent ? recentEffect?.actionId : undefined
+                  }
                 >
                   <button
                     aria-label={`${isSelected ? 'Deselect' : 'Select'} ${name}`}

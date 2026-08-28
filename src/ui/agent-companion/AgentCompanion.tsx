@@ -10,6 +10,51 @@ interface AgentCompanionProps {
   onOpen: () => void;
 }
 
+function ActivityItemView({ entry }: { entry: ActivityEntry }) {
+  const isAgent = entry.source === 'webmcp';
+  const sourceText = isAgent ? 'Agent action' : 'Human action';
+  const hasRevision =
+    entry.beforeRevision !== undefined && entry.afterRevision !== undefined;
+
+  return (
+    <li
+      key={entry.id}
+      className={`activity-entry activity-source-${entry.source ?? 'human'} activity-status-${entry.status ?? 'succeeded'}`}
+      data-activity-id={entry.id}
+      data-source={entry.source}
+      data-status={entry.status}
+      data-section={entry.section}
+    >
+      <div className="activity-entry-header">
+        <span className="activity-source-label">{sourceText}</span>
+        {entry.status && (
+          <span className={`activity-status-badge is-${entry.status}`}>
+            {entry.status}
+          </span>
+        )}
+        {entry.section && (
+          <span className="activity-section-tag">{entry.section}</span>
+        )}
+        {hasRevision && (
+          <span className="activity-revision-tag">
+            r{entry.beforeRevision} → r{entry.afterRevision}
+          </span>
+        )}
+        {entry.occurredAt && (
+          <time className="activity-time" dateTime={entry.occurredAt}>
+            {new Date(entry.occurredAt).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+            })}
+          </time>
+        )}
+      </div>
+      <span className="activity-summary">{entry.summary}</span>
+    </li>
+  );
+}
+
 function CompanionContent({
   capabilities,
   activity = [],
@@ -17,11 +62,17 @@ function CompanionContent({
   capabilities: readonly CapabilitySummary[];
   activity?: readonly ActivityEntry[];
 }) {
-  const latestActivity = activity[0]?.summary || '';
+  const latestActivity = activity[0];
   const statusSummary =
     capabilities.length === 0
       ? 'No Site Tools currently enabled.'
       : `${capabilities.length} Site Tools currently available.`;
+
+  const filteredCapabilities = capabilities.filter(
+    (cap) =>
+      !cap.id.includes('submit') &&
+      !cap.summary.toLowerCase().includes('submit'),
+  );
 
   return (
     <>
@@ -31,7 +82,7 @@ function CompanionContent({
           <h2>Agent Companion</h2>
         </div>
         <span className="companion-badge">
-          {capabilities.length > 0 ? 'WebMCP Active' : 'Local'}
+          {filteredCapabilities.length > 0 ? 'WebMCP Active' : 'Local'}
         </span>
       </div>
 
@@ -51,23 +102,54 @@ function CompanionContent({
         }}
       >
         {statusSummary}{' '}
-        {latestActivity ? `Latest action: ${latestActivity}` : ''}
+        {latestActivity ? `Latest action: ${latestActivity.summary}` : ''}
       </div>
 
+      {/* 1. Latest Activity Section — rendered before capabilities */}
+      <div className="companion-section companion-activity-section">
+        <h3 className="companion-section-title">Latest Activity</h3>
+        {latestActivity ? (
+          <div className="latest-activity-wrapper">
+            <ul
+              className="activity-list latest-activity-single"
+              aria-label="Latest action"
+            >
+              <ActivityItemView entry={latestActivity} />
+            </ul>
+
+            {activity.length > 1 && (
+              <details className="companion-activity-details">
+                <summary className="activity-disclosure-summary">
+                  All Activity ({activity.length})
+                </summary>
+                <ul
+                  className="activity-list activity-history-list"
+                  aria-label="Prior actions"
+                >
+                  {activity.slice(1, 20).map((entry) => (
+                    <ActivityItemView key={entry.id} entry={entry} />
+                  ))}
+                </ul>
+              </details>
+            )}
+          </div>
+        ) : (
+          <div className="companion-empty">
+            <span className="companion-empty-icon" aria-hidden="true">
+              ◇
+            </span>
+            <p>No actions recorded yet.</p>
+            <small>
+              Human and agent actions will appear here in real time.
+            </small>
+          </div>
+        )}
+      </div>
+
+      {/* 2. Page Capabilities Section — rendered after activity */}
       <div className="companion-section">
-        <h3
-          style={{
-            fontSize: '0.82rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em',
-            color: '#496b66',
-            marginTop: '0.75rem',
-            marginBottom: '0.25rem',
-          }}
-        >
-          Page Capabilities
-        </h3>
-        {capabilities.length === 0 ? (
+        <h3 className="companion-section-title">Page Capabilities</h3>
+        {filteredCapabilities.length === 0 ? (
           <div className="companion-empty">
             <span className="companion-empty-icon" aria-hidden="true">
               ◇
@@ -80,7 +162,7 @@ function CompanionContent({
           </div>
         ) : (
           <ul className="capability-list" aria-label="Available capabilities">
-            {capabilities.map((capability) => (
+            {filteredCapabilities.map((capability) => (
               <li key={capability.id}>
                 <strong>{capability.id}</strong>
                 <span>{capability.summary}</span>
@@ -89,81 +171,6 @@ function CompanionContent({
           </ul>
         )}
       </div>
-
-      {activity.length > 0 ? (
-        <div
-          className="companion-activity-section"
-          style={{ marginTop: '1.25rem' }}
-        >
-          <h3
-            style={{
-              fontSize: '0.82rem',
-              textTransform: 'uppercase',
-              letterSpacing: '0.04em',
-              color: '#496b66',
-              marginBottom: '0.5rem',
-            }}
-          >
-            Recent Actions
-          </h3>
-          <ul
-            style={{
-              display: 'grid',
-              gap: '0.5rem',
-              margin: 0,
-              padding: 0,
-              listStyle: 'none',
-            }}
-            aria-label="Recent actions"
-          >
-            {activity.slice(0, 20).map((entry) => (
-              <li
-                key={entry.id}
-                style={{
-                  display: 'grid',
-                  gap: '0.2rem',
-                  padding: '0.5rem 0.65rem',
-                  borderRadius: '0.5rem',
-                  background: entry.source === 'webmcp' ? '#e1f0ec' : '#f0f5f4',
-                  fontSize: '0.74rem',
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
-                >
-                  <span
-                    style={{
-                      fontWeight: 700,
-                      color: entry.source === 'webmcp' ? '#1b5e54' : '#4a6360',
-                    }}
-                  >
-                    {entry.source === 'webmcp'
-                      ? 'Agent action'
-                      : 'Human action'}
-                  </span>
-                  {entry.occurredAt ? (
-                    <time
-                      style={{ fontSize: '0.65rem', color: '#7a8f8c' }}
-                      dateTime={entry.occurredAt}
-                    >
-                      {new Date(entry.occurredAt).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                      })}
-                    </time>
-                  ) : null}
-                </div>
-                <span style={{ color: '#2f4b47' }}>{entry.summary}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
     </>
   );
 }

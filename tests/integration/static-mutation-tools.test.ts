@@ -156,6 +156,7 @@ describe('Static Mutation Tools', () => {
     });
 
     it('rejects missing or out-of-range fields for add_household_member', async () => {
+      const initialRevision = store.getState().application.revision;
       const resultStr = await handlers.add_household_member({
         firstName: '',
         ageYears: 150,
@@ -166,6 +167,10 @@ describe('Static Mutation Tools', () => {
 
       expect(result.ok).toBe(false);
       expect(result.error.code).toBe('INVALID_ARGUMENTS');
+      expect(result.error.fieldErrors).toBeDefined();
+      expect(result.error.fieldErrors?.firstName).toBeDefined();
+      expect(result.stateRevision).toBe(initialRevision);
+      expect(store.getState().application.revision).toBe(initialRevision);
     });
   });
 

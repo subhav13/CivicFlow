@@ -20,6 +20,7 @@ describe('CivicFlow application shell', () => {
     expect(
       within(navigation)
         .getAllByRole('button')
+        .filter((button) => button.classList.contains('section-nav-button'))
         .map((button) =>
           button.querySelector('.section-nav-copy > span')?.textContent?.trim(),
         ),
@@ -83,6 +84,22 @@ describe('CivicFlow application shell', () => {
     ).toBeDisabled();
     expect(
       screen.getByText('Review & Sign is the final section.'),
+    ).toBeInTheDocument();
+  });
+
+  it('renders detailed progress tracker with N of 6, blockers, active step, and next target', () => {
+    render(<App />);
+
+    const tracker = screen.getByTestId('application-progress-tracker');
+    expect(tracker).toBeInTheDocument();
+    expect(within(tracker).getByText('1 of 6')).toBeInTheDocument();
+    expect(within(tracker).getByText('4')).toBeInTheDocument(); // 4 blockers in seed
+    expect(within(tracker).getByText('About You')).toBeInTheDocument();
+    expect(within(tracker).getByText('Household')).toBeInTheDocument();
+    expect(
+      within(tracker).getByText(
+        'Demo data ready · Changes save in this browser',
+      ),
     ).toBeInTheDocument();
   });
 });

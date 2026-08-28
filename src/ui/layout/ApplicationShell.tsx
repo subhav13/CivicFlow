@@ -1,9 +1,21 @@
-import type { ReactNode } from 'react';
-
+import { useEffect, useState, type ReactNode } from 'react';
 import type { ApplicationProgress, SectionId } from '../../domain';
-import type { ActivityEntry, CapabilitySummary } from '../../application/store';
+import type {
+  ActivityEntry,
+  CapabilitySummary,
+  RecentEffect,
+} from '../../application/store';
+import type { OperationState } from '../../application/operation-feedback';
 import { AgentCompanion } from '../agent-companion/AgentCompanion';
 import { SECTION_META } from './section-meta';
+import { SectionStepper } from '../navigation/SectionStepper';
+import {
+  getProgressViewModel,
+  type ProgressViewModel,
+} from '../progress/progress-view-model';
+import { ApplicationProgressTracker } from '../progress/ApplicationProgressTracker';
+import { OperationStatus } from '../feedback/OperationStatus';
+import { FirstRunGuide } from '../onboarding/FirstRunGuide';
 
 interface ApplicationShellProps {
   activeSection: SectionId;
@@ -15,8 +27,13 @@ interface ApplicationShellProps {
   onNavigate: (section: SectionId) => void;
   onOpenCompanion: () => void;
   progress: ApplicationProgress;
+  progressViewModel?: ProgressViewModel;
+  activeOperation?: OperationState | null;
+  recentEffect?: RecentEffect | null;
+  onDismissOperation?: (actionId?: string) => void;
+  guideOpen?: boolean;
+  onDismissGuide?: () => void;
 }
-
 export function ApplicationShell({
   activeSection,
   capabilities,
@@ -27,15 +44,31 @@ export function ApplicationShell({
   onNavigate,
   onOpenCompanion,
   progress,
+  progressViewModel,
+  activeOperation,
+  recentEffect,
+  onDismissOperation,
+  guideOpen,
+  onDismissGuide,
 }: ApplicationShellProps) {
+  const vm =
+    progressViewModel ?? getProgressViewModel(progress, activeSection, 0, null);
   const activeIndex = SECTION_META.findIndex(
     (section) => section.id === activeSection,
   );
+  const prevSection =
+    activeIndex > 0 ? SECTION_META[activeIndex - 1] : undefined;
   const nextSection =
-    activeIndex >= 0 ? SECTION_META[activeIndex + 1] : undefined;
+    activeIndex >= 0 && activeIndex < SECTION_META.length - 1
+      ? SECTION_META[activeIndex + 1]
+      : undefined;
+  const [isEntered, setIsEntered] = useState(false);
+  useEffect(() => {
+    setIsEntered(true);
+  }, []);
 
   return (
-    <div className="app-frame">
+    <div className={`app-frame${isEntered ? ' is-entered' : ''}`}>
       <header className="topbar">
         <div className="brand-lockup">
           <div className="brand-mark" aria-hidden="true">
@@ -62,79 +95,55 @@ export function ApplicationShell({
         </span>
       </div>
 
-      <div className="progress-header">
-        <div>
-          <p className="eyebrow">Application workspace</p>
-          <h1>CivicFlow synthetic demo</h1>
-          <p className="progress-copy">
-            Complete the sections for Maya Carter and her household.
-          </p>
-        </div>
-        <div
-          className="progress-meter"
-          aria-label={`${progress.percent}% complete`}
-        >
-          <div className="progress-meter-label">
-            <span>Progress</span>
-            <strong>{progress.percent}% complete</strong>
-          </div>
-          <div className="progress-track" aria-hidden="true">
-            <span style={{ width: `${progress.percent}%` }} />
-          </div>
-        </div>
-      </div>
-
+      <ApplicationProgressTracker viewModel={vm} />
+      <OperationStatus
+        operation={activeOperation ?? null}
+        onDismiss={onDismissOperation}
+      />
+      <FirstRunGuide
+        isOpen={guideOpen ?? false}
+        onDismiss={onDismissGuide ?? (() => {})}
+      />
       <div className="workspace-grid">
-        <nav className="section-rail" aria-label="Application sections">
-          <p className="rail-label">Your application</p>
-          <ol>
-            {SECTION_META.map((section) => {
-              const sectionProgress = progress.sections.find(
-                (item) => item.id === section.id,
-              );
-              const isActive = activeSection === section.id;
-              return (
-                <li key={section.id}>
-                  <button
-                    type="button"
-                    className={`section-nav-button${isActive ? ' is-active' : ''}`}
-                    aria-current={isActive ? 'step' : undefined}
-                    onClick={() => onNavigate(section.id)}
-                  >
-                    <span className="section-number">{section.eyebrow}</span>
-                    <span className="section-nav-copy">
-                      <span>{section.label}</span>
-                      <small>
-                        {sectionProgress?.complete
-                          ? 'Complete'
-                          : 'Needs attention'}
-                      </small>
-                    </span>
-                    <span
-                      className={`section-state${sectionProgress?.complete ? ' is-complete' : ''}`}
-                      aria-hidden="true"
-                    >
-                      {sectionProgress?.complete ? '✓' : '·'}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
-          <div className="rail-footer">
-            <span className="rail-footer-icon" aria-hidden="true">
-              ◌
-            </span>
-            <span>Saved in this browser</span>
-          </div>
-        </nav>
+        <SectionStepper
+          activeSection={activeSection}
+          progress={progress}
+          onNavigate={onNavigate}
+          saveStateLabel={vm.saveStateLabel}
+        />
 
         <main
           className="application-main"
           aria-labelledby="active-section-heading"
+          data-section={activeSection}
+          data-recent-effect={
+            recentEffect?.section === activeSection
+              ? recentEffect.kind
+              : undefined
+          }
+          data-recent-action-id={
+            recentEffect?.section === activeSection
+              ? recentEffect.actionId
+              : undefined
+          }
         >
           {currentSection}
           <div className="section-footer">
+            <button
+              aria-label={
+                prevSection
+                  ? `Back: ${prevSection.label}`
+                  : 'Back: Previous section unavailable'
+              }
+              className="back-section-button"
+              disabled={!prevSection}
+              onClick={() => {
+                if (prevSection) onNavigate(prevSection.id);
+              }}
+              type="button"
+            >
+              {prevSection ? `← Back: ${prevSection.label}` : '← Back'}
+            </button>
             <button
               aria-label={
                 nextSection
@@ -155,7 +164,6 @@ export function ApplicationShell({
             ) : null}
           </div>
         </main>
-
         <AgentCompanion
           capabilities={capabilities}
           activity={activity}

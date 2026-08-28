@@ -5,6 +5,7 @@ import {
   type CivicFlowStore,
 } from '../../src/application/store';
 import {
+  addIncomeSource,
   attachDemoDocument,
   type CommandContext,
 } from '../../src/application/commands';
@@ -52,6 +53,49 @@ describe('Static Read and Navigation Handlers', () => {
 
       expect(result.ok).toBe(false);
       expect(result.tool).toBe('get_application_progress');
+      expect(result.error.code).toBe('INVALID_ARGUMENTS');
+      expect(result.error.recoverable).toBe(true);
+    });
+  });
+  describe('get_next_actions handler', () => {
+    it('returns deterministic next actions without mutating application revision or UI state', async () => {
+      const initialRev = store.getState().application.revision;
+      const initialSection = store.getState().ui.activeSection;
+      const initialActivityCount = store.getState().ui.activity.length;
+
+      const resultStr = await handlers.get_next_actions({});
+      const result = JSON.parse(resultStr);
+
+      expect(result.ok).toBe(true);
+      expect(result.tool).toBe('get_next_actions');
+      expect(result.changed).toBe(false);
+      expect(result.stateRevision).toBe(initialRev);
+      expect(resultStr.length).toBeLessThanOrEqual(1500);
+
+      // Data structure contract
+      expect(result.data.totalSections).toBe(6);
+      expect(typeof result.data.percent).toBe('number');
+      expect(typeof result.data.completedCount).toBe('number');
+      expect(typeof result.data.blockerCount).toBe('number');
+      expect(Array.isArray(result.data.actions)).toBe(true);
+      expect(result.data.actions.length).toBeLessThanOrEqual(3);
+      expect(result.data.stateRevision).toBe(initialRev);
+
+      // Invariants: no mutation of application, activity, selection, or activeOperation
+      expect(store.getState().application.revision).toBe(initialRev);
+      expect(store.getState().ui.activeSection).toBe(initialSection);
+      expect(store.getState().ui.activity.length).toBe(initialActivityCount);
+      expect(store.getState().ui.activeOperation).toBeNull();
+    });
+
+    it('rejects extra input properties strictly', async () => {
+      const resultStr = await handlers.get_next_actions({
+        unexpectedProperty: true,
+      });
+      const result = JSON.parse(resultStr);
+
+      expect(result.ok).toBe(false);
+      expect(result.tool).toBe('get_next_actions');
       expect(result.error.code).toBe('INVALID_ARGUMENTS');
       expect(result.error.recoverable).toBe(true);
     });
@@ -137,8 +181,11 @@ describe('Static Read and Navigation Handlers', () => {
           status: 'attached_demo',
         },
       ]);
+      expect(Array.isArray(result.data.requirements)).toBe(true);
+      expect(result.data.requirements).toHaveLength(4);
+      expect(result.data.missingRequiredCount).toBe(0);
+      expect(resultStr.length).toBeLessThanOrEqual(1500);
     });
-
     it('rejects unexpected arguments strictly', async () => {
       const resultStr = await handlers.list_uploaded_documents({
         unexpected: 123,
@@ -147,6 +194,42 @@ describe('Static Read and Navigation Handlers', () => {
 
       expect(result.ok).toBe(false);
       expect(result.error.code).toBe('INVALID_ARGUMENTS');
+    });
+
+    it('returns missingRequiredCount = 1 when income is reported without proof of income', async () => {
+      const initialRev = store.getState().application.revision;
+      store.dispatch(
+        (state, c) =>
+          addIncomeSource(
+            state,
+            {
+              ownerPersonId: state.applicant.id,
+              employerName: 'Acme Dental',
+              amountCents: 200000,
+              frequency: 'monthly',
+              currency: 'USD',
+            },
+            c,
+          ),
+        { source: 'human' },
+      );
+      const currentRev = store.getState().application.revision;
+      expect(currentRev).toBe(initialRev + 1);
+
+      const resultStr = await handlers.list_uploaded_documents({});
+      const result = JSON.parse(resultStr);
+
+      expect(result.ok).toBe(true);
+      expect(result.changed).toBe(false);
+      expect(result.stateRevision).toBe(currentRev);
+      expect(result.data.count).toBe(0);
+      expect(result.data.missingRequiredCount).toBe(1);
+      const proofReq = result.data.requirements.find(
+        (r: { kind: string }) => r.kind === 'proof_of_income',
+      );
+      expect(proofReq.required).toBe(true);
+      expect(proofReq.status).toBe('missing');
+      expect(store.getState().application.revision).toBe(currentRev);
     });
   });
 

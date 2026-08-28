@@ -20,7 +20,7 @@ describe('Dynamic Registry Manager and Contextual Handlers', () => {
     await registry.start();
   });
 
-  it('registers all six static tools on initialization', async () => {
+  it('registers all seven static tools on initialization', async () => {
     const tools = await port.getTools();
     const names = tools.map((t) => t.name).sort();
 
@@ -28,10 +28,12 @@ describe('Dynamic Registry Manager and Contextual Handlers', () => {
       'add_household_member',
       'add_income_source',
       'get_application_progress',
+      'get_next_actions',
       'list_uploaded_documents',
       'navigate_to_section',
       'set_current_coverage',
     ]);
+    expect(names).toHaveLength(7);
   });
 
   it('dynamically exposes and hides update_household_member based on household selection', async () => {

@@ -1,6 +1,7 @@
 export type CivicFlowToolName =
   | 'get_application_progress'
   | 'navigate_to_section'
+  | 'get_next_actions'
   | 'add_household_member'
   | 'update_household_member'
   | 'add_income_source'
@@ -9,6 +10,12 @@ export type CivicFlowToolName =
   | 'list_uploaded_documents'
   | 'review_application';
 
+export interface ToolFailureRecovery {
+  section: string;
+  message: string;
+  suggestedTool?: CivicFlowToolName;
+  requiredFields?: readonly string[];
+}
 export interface ToolSuccess<T = unknown> {
   ok: true;
   tool: CivicFlowToolName;
@@ -29,6 +36,7 @@ export interface ToolFailure {
     message: string;
     recoverable: boolean;
     fieldErrors?: Record<string, string>;
+    recovery?: ToolFailureRecovery;
   };
   stateRevision: number;
 }
@@ -64,6 +72,7 @@ export function failureResult(
   recoverable: boolean,
   stateRevision: number,
   fieldErrors?: Record<string, string>,
+  recovery?: ToolFailureRecovery,
 ): ToolFailure {
   return {
     ok: false,
@@ -76,6 +85,7 @@ export function failureResult(
       ...(fieldErrors && Object.keys(fieldErrors).length > 0
         ? { fieldErrors }
         : {}),
+      ...(recovery !== undefined ? { recovery } : {}),
     },
     stateRevision,
   };
@@ -160,6 +170,27 @@ export function serializeToolResult<T>(result: ToolResult<T>): string {
     });
   }
 
+  if (result.error.recovery) {
+    const withoutRecovery: ToolFailure = {
+      ok: false,
+      tool: result.tool,
+      actionId: result.actionId.length <= 64 ? result.actionId : 'action',
+      error: {
+        code: result.error.code,
+        message: result.error.message,
+        recoverable: result.error.recoverable,
+        ...(result.error.fieldErrors
+          ? { fieldErrors: result.error.fieldErrors }
+          : {}),
+      },
+      stateRevision: result.stateRevision,
+    };
+    const withoutRecJson = JSON.stringify(withoutRecovery);
+    if (withoutRecJson.length <= MAX_SERIALIZED_LENGTH) {
+      return withoutRecJson;
+    }
+  }
+
   if (result.error.fieldErrors) {
     const withoutFieldErrors: ToolFailure = {
       ok: false,
@@ -169,6 +200,7 @@ export function serializeToolResult<T>(result: ToolResult<T>): string {
         code: result.error.code,
         message: result.error.message,
         recoverable: result.error.recoverable,
+        ...(result.error.recovery ? { recovery: result.error.recovery } : {}),
       },
       stateRevision: result.stateRevision,
     };
