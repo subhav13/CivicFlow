@@ -22,7 +22,7 @@ import { RecoveryBanner } from '../ui/feedback/RecoveryBanner';
 import { ApplicationShell } from '../ui/layout/ApplicationShell';
 import type { AssistantController } from '../assistant/assistant-controller';
 import { createAssistantRuntime } from '../assistant/assistant-runtime';
-import type { SpeechOutputService } from '../ui/agent-companion/AssistantPanel';
+import type { SpeechOutputService } from '../ui/agent-companion/speech-output';
 import { useCivicFlowStore } from '../ui/use-civic-flow-store';
 import { useWebMcpRegistry } from '../webmcp';
 const REVIEW_FOCUS_TARGETS: Partial<Record<ReviewIssueCode, string>> = {

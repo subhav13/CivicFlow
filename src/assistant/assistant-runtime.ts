@@ -1,4 +1,5 @@
 import type { CivicFlowStore } from '../application/store';
+import { getApplicantAndHouseholdPeople } from '../domain';
 import type { ModelContextPort } from '../webmcp/model-context-port';
 import { createDefaultModelContextPort } from '../webmcp/in-process-model-context-port';
 import { WebMcpRegistryManager } from '../webmcp/registry-manager';
@@ -26,6 +27,7 @@ import {
   createGeminiToolBridge,
   type GeminiToolBridge,
 } from './gemini-tool-bridge';
+import { createEffectiveConfirmationDraft } from './tool-confirmation-view-model';
 import type { CurrentToolSurface } from './types';
 
 export interface AssistantRuntimeOptions {
@@ -62,7 +64,43 @@ export function createAssistantRuntime(
 
   const port = options.port ?? createDefaultModelContextPort();
   const surface = createCurrentToolSurface(port);
-  const toolBridge = createGeminiToolBridge(surface);
+  const toolBridge = createGeminiToolBridge(surface, {
+    confirmationDraftFactory: (toolName, argumentsValue) => {
+      const currentState = options.store.getState();
+      const selection = currentState.ui.selection;
+      const selectedHouseholdMember =
+        selection?.kind === 'household'
+          ? currentState.application.householdMembers.find(
+              (member) => member.id === selection.id,
+            )
+          : undefined;
+      const selectedIncomeSource =
+        selection?.kind === 'income'
+          ? currentState.application.incomeSources.find(
+              (income) => income.id === selection.id,
+            )
+          : undefined;
+      const incomeOwner = selectedIncomeSource
+        ? getApplicantAndHouseholdPeople(currentState.application).find(
+            (person) => person.id === selectedIncomeSource.ownerPersonId,
+          )
+        : undefined;
+
+      return createEffectiveConfirmationDraft(toolName, argumentsValue, {
+        applicantLastName: currentState.application.applicant.lastName,
+        selectedHouseholdMember,
+        selectedIncomeSource:
+          selectedIncomeSource && incomeOwner
+            ? {
+                ownerName: `${incomeOwner.firstName} ${incomeOwner.lastName}`,
+                employerName: selectedIncomeSource.employerName,
+                amount: selectedIncomeSource.amountCents / 100,
+                frequency: selectedIncomeSource.frequency,
+              }
+            : undefined,
+      });
+    },
+  });
   const registryManager =
     options.registryManager ??
     new WebMcpRegistryManager({

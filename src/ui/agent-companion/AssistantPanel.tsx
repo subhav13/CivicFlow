@@ -5,6 +5,10 @@ import type {
   AssistantControllerEvent,
 } from '../../assistant/assistant-controller';
 import {
+  createConfirmationDraft,
+  createConfirmationNarration,
+} from '../../assistant/tool-confirmation-view-model';
+import {
   createLiveTurnAssembler,
   type LiveTurnAssembler,
 } from '../../assistant/live-turn-assembler';
@@ -21,11 +25,7 @@ import {
   type PendingToolConfirmation,
 } from './ToolConfirmationCard';
 import { VoiceControls } from './VoiceControls';
-
-export interface SpeechOutputService {
-  speak(text: string, rate: number): void;
-  cancel(): void;
-}
+import { browserSpeechOutput, type SpeechOutputService } from './speech-output';
 
 export interface AssistantPanelProps {
   controller?: AssistantController | null;
@@ -33,31 +33,8 @@ export interface AssistantPanelProps {
   onReadCurrentSection?: () => string;
   speechOutput?: SpeechOutputService;
   activeOperation?: OperationState | null;
+  renderConfirmation?: boolean;
 }
-
-const fallbackSpeechOutput: SpeechOutputService = {
-  speak(text: string, rate: number) {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      try {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = rate;
-        window.speechSynthesis.speak(utterance);
-      } catch {
-        // Fallback gracefully in unsupported or restricted browser environments
-      }
-    }
-  },
-  cancel() {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      try {
-        window.speechSynthesis.cancel();
-      } catch {
-        // Fallback gracefully
-      }
-    }
-  },
-};
 
 let msgCounter = 0;
 function createMessageId(prefix: string): string {
@@ -67,6 +44,28 @@ function createMessageId(prefix: string): string {
 
 const LIVE_USER_MESSAGE_ID = 'live-user-turn';
 const LIVE_ASSISTANT_MESSAGE_ID = 'live-assistant-turn';
+const CORRECTION_PROMPT =
+  'Tell me what needs to change. I will show the updated draft for review before anything is applied.';
+const handledFailureEvents = new WeakSet<object>();
+
+function isAssistantPanelVisible(element: HTMLElement | null): boolean {
+  if (!element || typeof window === 'undefined') return true;
+  if (typeof window.getComputedStyle !== 'function') return true;
+
+  let current: HTMLElement | null = element;
+  while (current) {
+    const style = window.getComputedStyle(current);
+    if (
+      style.display === 'none' ||
+      style.visibility === 'hidden' ||
+      style.visibility === 'collapse'
+    ) {
+      return false;
+    }
+    current = current.parentElement;
+  }
+  return true;
+}
 
 export function AssistantPanel({
   controller = null,
@@ -74,8 +73,9 @@ export function AssistantPanel({
   onReadCurrentSection,
   speechOutput,
   activeOperation = null,
+  renderConfirmation = true,
 }: AssistantPanelProps) {
-  const activeSpeechOutput = speechOutput ?? fallbackSpeechOutput;
+  const activeSpeechOutput = speechOutput ?? browserSpeechOutput;
 
   const [sessionState, setSessionState] = useState<SessionState>(() =>
     controller ? controller.getState() : { status: 'idle' },
@@ -92,6 +92,7 @@ export function AssistantPanel({
   const liveTurnAssemblerRef = useRef<LiveTurnAssembler>(
     createLiveTurnAssembler(),
   );
+  const panelRef = useRef<HTMLElement>(null);
   const speechAloudRef = useRef(speechAloud);
   speechAloudRef.current = speechAloud;
   const speechRateRef = useRef(speechRate);
@@ -211,6 +212,7 @@ export function AssistantPanel({
           );
         }
       }
+      return committed;
     };
 
     const unsubscribe = controller.subscribe(
@@ -256,12 +258,87 @@ export function AssistantPanel({
             break;
 
           case 'confirmation_required':
+            {
+              const committed = commitLiveTurn(false);
+              if (!committed.assistantText) {
+                const narration = createConfirmationNarration(event.draft);
+                setLatestAssistantText(narration);
+                setMessages((prev) => [
+                  ...prev,
+                  {
+                    id: createMessageId('assistant-review'),
+                    role: 'assistant',
+                    text: narration,
+                  },
+                ]);
+              }
+            }
+            setIsThinking(false);
             setPendingConfirmation({
               callId: event.callId,
               toolName: event.toolName,
               message: event.message,
+              draft: event.draft ??
+                createConfirmationDraft(event.toolName, {}) ?? {
+                  title: 'Proposed change',
+                  fields: [],
+                },
             });
             break;
+
+          case 'applying':
+            setIsThinking(true);
+            setIsSpeaking(false);
+            break;
+
+          case 'revision_requested':
+            setPendingConfirmation(null);
+            setIsThinking(false);
+            setIsSpeaking(false);
+            setLatestAssistantText(CORRECTION_PROMPT);
+            setMessages((prev) => [
+              ...prev.filter(
+                (message) =>
+                  message.id !== LIVE_USER_MESSAGE_ID &&
+                  message.id !== LIVE_ASSISTANT_MESSAGE_ID,
+              ),
+              {
+                id: createMessageId('assistant'),
+                role: 'assistant',
+                text: CORRECTION_PROMPT,
+              },
+            ]);
+            break;
+
+          case 'succeeded': {
+            setPendingConfirmation(null);
+            setIsThinking(false);
+            setIsSpeaking(false);
+            break;
+          }
+
+          case 'failed': {
+            if (!isAssistantPanelVisible(panelRef.current)) break;
+            if (handledFailureEvents.has(event)) break;
+            handledFailureEvents.add(event);
+            const failureMessage = `I couldn't apply that change: ${event.message}`;
+            setIsThinking(false);
+            setIsSpeaking(false);
+            setLatestAssistantText(failureMessage);
+            setMessages((prev) => [
+              ...prev.filter(
+                (message) =>
+                  message.id !== LIVE_USER_MESSAGE_ID &&
+                  message.id !== LIVE_ASSISTANT_MESSAGE_ID,
+              ),
+              {
+                id: createMessageId('assistant'),
+                role: 'assistant',
+                text: failureMessage,
+              },
+            ]);
+            break;
+          }
 
           case 'turn_complete':
             commitLiveTurn(Boolean(event.interrupted));
@@ -276,7 +353,6 @@ export function AssistantPanel({
       unsubscribe();
       liveTurnAssembler.reset();
       activeSpeechOutputRef.current.cancel();
-      controller.stopMicrophone();
     };
   }, [controller]);
   const handleSendText = (text: string) => {
@@ -335,6 +411,11 @@ export function AssistantPanel({
     }
   };
 
+  const handleNeedCorrection = (callId: string) => {
+    if (!controller) return;
+    controller.requestRevision(callId);
+  };
+
   const handleRepeatSpeech = () => {
     if (latestAssistantText) {
       activeSpeechOutput.speak(latestAssistantText, speechRate);
@@ -375,6 +456,7 @@ export function AssistantPanel({
 
   return (
     <section
+      ref={panelRef}
       className="assistant-panel"
       role="region"
       aria-label="Assistant panel"
@@ -425,10 +507,11 @@ export function AssistantPanel({
       </div>
       <ConversationTimeline messages={messages} />
 
-      {pendingConfirmation ? (
+      {pendingConfirmation && renderConfirmation ? (
         <ToolConfirmationCard
           confirmation={pendingConfirmation}
           onConfirm={handleConfirmTool}
+          onNeedCorrection={handleNeedCorrection}
           onCancel={handleCancelTool}
         />
       ) : null}

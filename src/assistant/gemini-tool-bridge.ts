@@ -2,6 +2,10 @@ import Ajv, { type ErrorObject, type ValidateFunction } from 'ajv';
 
 import { classifyToolIntent } from './confirmation-policy';
 import { mapRegisteredTools } from './gemini-function-mapper';
+import {
+  createConfirmationDraft,
+  type ConfirmationDraftFactory,
+} from './tool-confirmation-view-model';
 import type {
   CurrentToolSurface,
   ProviderFunctionTool,
@@ -156,9 +160,17 @@ export interface GeminiToolBridge {
   ): Promise<ToolBridgeResponse>;
 }
 
+export interface GeminiToolBridgeOptions {
+  confirmationDraftFactory?: ConfirmationDraftFactory;
+}
+
 export function createGeminiToolBridge(
   surface: CurrentToolSurface,
+  options: GeminiToolBridgeOptions = {},
 ): GeminiToolBridge {
+  const confirmationDraftFactory =
+    options.confirmationDraftFactory ?? createConfirmationDraft;
+
   return {
     async listFunctions(signal?: AbortSignal): Promise<ProviderFunctionTool[]> {
       const tools = await surface.snapshot(signal);
@@ -215,11 +227,20 @@ export function createGeminiToolBridge(
       }
 
       if (decision.kind === 'confirm' && !options?.confirmed) {
+        const draft = confirmationDraftFactory(call.name, parsedArguments);
+        if (!draft) {
+          return {
+            kind: 'error',
+            callId: call.callId,
+            message: 'This action cannot be confirmed safely.',
+          };
+        }
         return {
           kind: 'confirmation_required',
           callId: call.callId,
           toolName: call.name,
           message: decision.message,
+          draft,
         };
       }
 

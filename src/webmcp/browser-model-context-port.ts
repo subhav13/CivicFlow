@@ -4,6 +4,19 @@ import type {
   ToolDefinition,
 } from './model-context-port';
 
+function normalizeExecutionResult(value: string): string {
+  // WebMCP stringifies the value returned by a tool callback. CivicFlow's
+  // internal handlers also return serialized receipts so the in-process port
+  // can stay transport-neutral. Unwrap exactly that one browser boundary,
+  // while preserving ordinary object JSON and legacy text results.
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return typeof parsed === 'string' ? parsed : value;
+  } catch {
+    return value;
+  }
+}
+
 /**
  * Browser adapter for document.modelContext.
  *
@@ -80,7 +93,8 @@ export class BrowserModelContextPort implements ModelContextPort {
         'document.modelContext is unavailable in this browser environment',
       );
     }
-    return context.executeTool(tool, input, options);
+    const serializedResult = await context.executeTool(tool, input, options);
+    return normalizeExecutionResult(serializedResult);
   }
 
   subscribeToolChange(listener: () => void): () => void {

@@ -108,7 +108,11 @@ export async function installBrowserModelContext(page: Page): Promise<void> {
         if (executionDelayMs > 0) {
           await new Promise((resolve) => setTimeout(resolve, executionDelayMs));
         }
-        return result;
+        // Native WebMCP serializes the callback's return value once before
+        // resolving executeTool(). Keep this fixture faithful to that boundary
+        // so an already-serialized CivicFlow receipt is exercised as nested
+        // JSON in browser tests.
+        return JSON.stringify(result);
       },
       addEventListener(type: string, listener: () => void): void {
         if (type === 'toolchange') {
@@ -163,9 +167,11 @@ export async function executeBrowserTool<T = unknown>(
         tool,
         toolInput,
       );
-      return typeof resultJson === 'string'
-        ? JSON.parse(resultJson)
-        : resultJson;
+      const outerResult =
+        typeof resultJson === 'string' ? JSON.parse(resultJson) : resultJson;
+      return typeof outerResult === 'string'
+        ? JSON.parse(outerResult)
+        : outerResult;
     },
     { toolName: name, toolInput: input },
   );

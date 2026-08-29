@@ -80,7 +80,7 @@ export interface GeminiLiveClient {
   disconnect(): void;
   sendText(text: string): void;
   sendAudio(data: string, mimeType?: string): void;
-  sendToolResponse(response: LiveToolResponse): void;
+  sendToolResponse(response: LiveToolResponse): boolean;
   subscribe(listener: (event: GeminiLiveEvent) => void): () => void;
   isConnected(): boolean;
 }
@@ -100,6 +100,9 @@ interface RawServerContent {
   inputTranscription?: {
     text?: string;
     finished?: boolean;
+  };
+  interimInputTranscription?: {
+    text?: string;
   };
   outputTranscription?: {
     text?: string;
@@ -175,12 +178,22 @@ export function parseGeminiLiveMessage(raw: string): GeminiLiveEvent[] {
         }
       }
     }
+    if (typeof sc.interimInputTranscription?.text === 'string') {
+      events.push({
+        type: 'transcript',
+        speaker: 'user',
+        text: sc.interimInputTranscription.text,
+        final: false,
+      });
+    }
     if (typeof sc.inputTranscription?.text === 'string') {
       events.push({
         type: 'transcript',
         speaker: 'user',
         text: sc.inputTranscription.text,
-        final: Boolean(sc.inputTranscription.finished),
+        // Current Live API frames inputTranscription as authoritative. Keep
+        // accepting the older explicit finished flag during the transition.
+        final: sc.inputTranscription.finished !== false,
       });
     }
     if (typeof sc.outputTranscription?.text === 'string') {
@@ -533,21 +546,26 @@ export function createGeminiLiveClient(
       );
     },
 
-    sendToolResponse(response: LiveToolResponse): void {
-      if (!socket || !connected) return;
-      socket.send(
-        JSON.stringify({
-          toolResponse: {
-            functionResponses: [
-              {
-                id: response.callId,
-                name: response.name,
-                response: response.response,
-              },
-            ],
-          },
-        }),
-      );
+    sendToolResponse(response: LiveToolResponse): boolean {
+      if (!socket || !connected) return false;
+      try {
+        socket.send(
+          JSON.stringify({
+            toolResponse: {
+              functionResponses: [
+                {
+                  id: response.callId,
+                  name: response.name,
+                  response: response.response,
+                },
+              ],
+            },
+          }),
+        );
+        return true;
+      } catch {
+        return false;
+      }
     },
 
     subscribe(listener: (event: GeminiLiveEvent) => void): () => void {

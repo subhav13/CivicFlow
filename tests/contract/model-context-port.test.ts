@@ -113,6 +113,57 @@ describe('ModelContextPort Contract', () => {
         });
       }
     });
+
+    it('unwraps a callback string that native WebMCP serializes once more', async () => {
+      const receipt = JSON.stringify({
+        ok: true,
+        tool: 'add_income_source',
+        actionId: 'act-income-1',
+        changed: true,
+        stateRevision: 1,
+      });
+      const nativeBrowserContext = {
+        registerTool: vi.fn(async () => {}),
+        getTools: vi.fn(async () => [
+          {
+            name: 'add_income_source',
+            title: 'Add income source',
+            description: 'Adds income',
+            inputSchema: { type: 'object' },
+          },
+        ]),
+        executeTool: vi.fn(async () => JSON.stringify(receipt)),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      };
+
+      Object.defineProperty(document, 'modelContext', {
+        value: nativeBrowserContext,
+        configurable: true,
+        writable: true,
+      });
+
+      try {
+        const port = new BrowserModelContextPort();
+        const output = await port.executeTool(
+          {
+            name: 'add_income_source',
+            title: 'Add income source',
+            description: 'Adds income',
+            inputSchema: { type: 'object' },
+          },
+          {},
+        );
+
+        expect(output).toBe(receipt);
+      } finally {
+        Object.defineProperty(document, 'modelContext', {
+          value: undefined,
+          configurable: true,
+          writable: true,
+        });
+      }
+    });
   });
 
   describe('FakeModelContextPort', () => {

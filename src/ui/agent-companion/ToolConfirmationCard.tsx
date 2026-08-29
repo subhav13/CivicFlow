@@ -1,12 +1,16 @@
+import type { ConfirmationDraft } from '../../assistant/tool-confirmation-view-model';
+
 export interface PendingToolConfirmation {
   callId: string;
   toolName: string;
   message: string;
+  draft?: ConfirmationDraft;
 }
 
 export interface ToolConfirmationCardProps {
   confirmation: PendingToolConfirmation;
   onConfirm: (callId: string) => void;
+  onNeedCorrection: (callId: string) => void;
   onCancel: (callId: string) => void;
   disabled?: boolean;
 }
@@ -14,6 +18,7 @@ export interface ToolConfirmationCardProps {
 export function ToolConfirmationCard({
   confirmation,
   onConfirm,
+  onNeedCorrection,
   onCancel,
   disabled = false,
 }: ToolConfirmationCardProps) {
@@ -30,7 +35,15 @@ export function ToolConfirmationCard({
           onClick={() => onConfirm(confirmation.callId)}
           disabled={disabled}
         >
-          Confirm
+          Confirm and apply
+        </button>
+        <button
+          type="button"
+          className="tool-correction-button"
+          onClick={() => onNeedCorrection(confirmation.callId)}
+          disabled={disabled}
+        >
+          Need correction
         </button>
         <button
           type="button"

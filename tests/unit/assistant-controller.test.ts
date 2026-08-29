@@ -54,7 +54,7 @@ class FakeClient implements GeminiLiveClient {
   readonly disconnect = vi.fn();
   readonly sendText = vi.fn();
   readonly sendAudio = vi.fn();
-  readonly sendToolResponse = vi.fn();
+  readonly sendToolResponse = vi.fn(() => true);
   private listeners = new Set<(event: GeminiLiveEvent) => void>();
   private connected = false;
 

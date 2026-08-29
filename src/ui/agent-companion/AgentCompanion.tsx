@@ -1,12 +1,19 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { ActivityEntry, CapabilitySummary } from '../../application/store';
 import {
   getFriendlyOperationLabel,
   type OperationState,
 } from '../../application/operation-feedback';
-import type { AssistantController } from '../../assistant/assistant-controller';
-import { AssistantPanel, type SpeechOutputService } from './AssistantPanel';
+import type {
+  AssistantController,
+  AssistantControllerEvent,
+} from '../../assistant/assistant-controller';
+import type { ConfirmationDraft } from '../../assistant/tool-confirmation-view-model';
+import { AssistantPanel } from './AssistantPanel';
+import { browserSpeechOutput, type SpeechOutputService } from './speech-output';
+import type { PendingToolConfirmation } from './ToolConfirmationCard';
+import { ToolConfirmationModal } from './ToolConfirmationModal';
 
 export interface AgentCompanionProps {
   capabilities: readonly CapabilitySummary[];
@@ -19,6 +26,16 @@ export interface AgentCompanionProps {
   isOpen: boolean;
   onClose: () => void;
   onOpen: () => void;
+}
+
+const COMPACT_COMPANION_QUERY = '(max-width: 70rem)';
+
+function usesCompactCompanionLayout(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia(COMPACT_COMPANION_QUERY).matches
+  );
 }
 function ActivityItemView({ entry }: { entry: ActivityEntry }) {
   const isAgent = entry.source === 'webmcp';
@@ -95,6 +112,8 @@ function CompanionContent({
   onReadCurrentSection,
   speechOutput,
   activeOperation,
+  renderConfirmation = false,
+  deliveryFailure,
 }: {
   capabilities: readonly CapabilitySummary[];
   activity?: readonly ActivityEntry[];
@@ -103,6 +122,8 @@ function CompanionContent({
   onReadCurrentSection?: () => string;
   speechOutput?: SpeechOutputService;
   activeOperation?: OperationState | null;
+  renderConfirmation?: boolean;
+  deliveryFailure?: string | null;
 }) {
   const latestActivity = activity[0];
   const statusSummary =
@@ -134,7 +155,14 @@ function CompanionContent({
         onReadCurrentSection={onReadCurrentSection}
         speechOutput={speechOutput}
         activeOperation={activeOperation}
+        renderConfirmation={renderConfirmation}
       />
+
+      {deliveryFailure ? (
+        <div className="assistant-delivery-notice" role="status">
+          {deliveryFailure}
+        </div>
+      ) : null}
 
       <div
         aria-live="polite"
@@ -253,6 +281,149 @@ export function AgentCompanion({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const wasOpen = useRef(false);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const onOpenRef = useRef(onOpen);
+  onOpenRef.current = onOpen;
+  const [pendingConfirmation, setPendingConfirmation] = useState<
+    (PendingToolConfirmation & { draft: ConfirmationDraft }) | null
+  >(null);
+  const [confirmationStatus, setConfirmationStatus] = useState<
+    'confirming' | 'applying' | 'failed'
+  >('confirming');
+  const [confirmationFailure, setConfirmationFailure] = useState<string>();
+  const [deliveryFailure, setDeliveryFailure] = useState<string | null>(null);
+  const [focusHeadingAfterSuccess, setFocusHeadingAfterSuccess] =
+    useState(false);
+  const pendingConfirmationRef = useRef(pendingConfirmation);
+  pendingConfirmationRef.current = pendingConfirmation;
+
+  useEffect(() => {
+    if (!assistantController) {
+      setPendingConfirmation(null);
+      return;
+    }
+
+    const unsubscribe = assistantController.subscribe(
+      (event: AssistantControllerEvent) => {
+        switch (event.type) {
+          case 'confirmation_required':
+            {
+              const nextConfirmation = {
+                callId: event.callId,
+                toolName: event.toolName,
+                message: event.message,
+                draft: event.draft,
+              };
+              pendingConfirmationRef.current = nextConfirmation;
+              setPendingConfirmation(nextConfirmation);
+            }
+            setConfirmationStatus('confirming');
+            setConfirmationFailure(undefined);
+            setDeliveryFailure(null);
+            break;
+          case 'applying':
+            if (pendingConfirmationRef.current?.callId === event.callId) {
+              (speechOutput ?? browserSpeechOutput).cancel();
+              setConfirmationStatus('applying');
+            }
+            break;
+          case 'revision_requested':
+            if (pendingConfirmationRef.current?.callId === event.callId) {
+              pendingConfirmationRef.current = null;
+              setPendingConfirmation(null);
+              setConfirmationStatus('confirming');
+              setConfirmationFailure(undefined);
+              (speechOutput ?? browserSpeechOutput).cancel();
+              if (usesCompactCompanionLayout()) onOpenRef.current();
+            }
+            break;
+          case 'succeeded':
+            if (pendingConfirmationRef.current?.callId === event.callId) {
+              pendingConfirmationRef.current = null;
+              setPendingConfirmation(null);
+              setConfirmationStatus('confirming');
+              setConfirmationFailure(undefined);
+              setFocusHeadingAfterSuccess(true);
+              onCloseRef.current();
+            }
+            break;
+          case 'failed':
+            if (pendingConfirmationRef.current?.callId === event.callId) {
+              setConfirmationStatus('failed');
+              setConfirmationFailure(event.message);
+            }
+            break;
+          case 'delivery_failed':
+            setDeliveryFailure(event.message);
+            break;
+          case 'state':
+            if (event.state.status !== 'connected') {
+              pendingConfirmationRef.current = null;
+              setPendingConfirmation(null);
+            }
+            break;
+          case 'error':
+            pendingConfirmationRef.current = null;
+            setPendingConfirmation(null);
+            setDeliveryFailure(null);
+            break;
+          default:
+            break;
+        }
+      },
+    );
+    return unsubscribe;
+  }, [assistantController, speechOutput]);
+
+  useEffect(() => {
+    const appFrame = document.querySelector<HTMLElement>('.app-frame');
+    if (!pendingConfirmation || !appFrame) return;
+    const alreadyInert = appFrame.hasAttribute('inert');
+    appFrame.setAttribute('inert', '');
+    return () => {
+      if (!alreadyInert) appFrame.removeAttribute('inert');
+    };
+  }, [pendingConfirmation]);
+
+  useEffect(() => {
+    if (!focusHeadingAfterSuccess || isOpen) return;
+    let cancelled = false;
+    let attempts = 0;
+    let frameId: number | undefined;
+
+    const focusCurrentHeading = () => {
+      if (cancelled) return;
+      const heading = document.getElementById('active-section-heading');
+      if (heading instanceof HTMLElement) {
+        heading.focus();
+        setFocusHeadingAfterSuccess(false);
+        return;
+      }
+
+      if (attempts >= 3) {
+        setFocusHeadingAfterSuccess(false);
+        return;
+      }
+      attempts += 1;
+      if (typeof window.requestAnimationFrame === 'function') {
+        frameId = window.requestAnimationFrame(focusCurrentHeading);
+      } else {
+        queueMicrotask(focusCurrentHeading);
+      }
+    };
+
+    queueMicrotask(focusCurrentHeading);
+    return () => {
+      cancelled = true;
+      if (
+        frameId !== undefined &&
+        typeof window.cancelAnimationFrame === 'function'
+      ) {
+        window.cancelAnimationFrame(frameId);
+      }
+    };
+  }, [focusHeadingAfterSuccess, isOpen, activeOperation]);
 
   useEffect(() => {
     if (isOpen) {
@@ -260,14 +431,18 @@ export function AgentCompanion({
       closeRef.current?.focus();
     } else if (wasOpen.current) {
       wasOpen.current = false;
-      triggerRef.current?.focus();
+      if (!focusHeadingAfterSuccess) {
+        triggerRef.current?.focus();
+      }
     }
-  }, [isOpen]);
+  }, [focusHeadingAfterSuccess, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape' && !pendingConfirmationRef.current) {
+        onClose();
+      }
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
@@ -284,6 +459,8 @@ export function AgentCompanion({
           onReadCurrentSection={onReadCurrentSection}
           speechOutput={speechOutput}
           activeOperation={activeOperation}
+          renderConfirmation={false}
+          deliveryFailure={deliveryFailure}
         />
         <button
           ref={triggerRef}
@@ -325,9 +502,44 @@ export function AgentCompanion({
               onReadCurrentSection={onReadCurrentSection}
               speechOutput={speechOutput}
               activeOperation={activeOperation}
+              renderConfirmation={false}
+              deliveryFailure={deliveryFailure}
             />
           </section>
         </div>
+      ) : null}
+
+      {pendingConfirmation ? (
+        <ToolConfirmationModal
+          confirmation={pendingConfirmation}
+          status={confirmationStatus}
+          failureMessage={confirmationFailure}
+          onConfirm={() => {
+            void assistantController?.confirmToolCall(
+              pendingConfirmation.callId,
+            );
+          }}
+          onCancel={() => {
+            if (confirmationStatus === 'applying') return;
+            assistantController?.cancelToolCall(pendingConfirmation.callId);
+            setPendingConfirmation(null);
+            setConfirmationStatus('confirming');
+            setConfirmationFailure(undefined);
+          }}
+          onNeedCorrection={() => {
+            if (confirmationStatus !== 'confirming') return;
+            const accepted =
+              assistantController?.requestRevision(
+                pendingConfirmation.callId,
+              ) ?? false;
+            if (!accepted) {
+              setConfirmationStatus('failed');
+              setConfirmationFailure(
+                'This change is already being applied. Please wait for it to finish before requesting another correction.',
+              );
+            }
+          }}
+        />
       ) : null}
     </>
   );

@@ -1,6 +1,9 @@
 import type { ToolBridgeResponse, ToolCall } from './types';
 import type { GeminiToolBridge } from './gemini-tool-bridge';
 import type { GeminiLiveClient, GeminiLiveEvent } from './gemini-live-client';
+import { classifyConfirmationReply } from './confirmation-reply';
+import { mergeLiveTextChunks } from './live-turn-assembler';
+import type { ConfirmationDraft } from './tool-confirmation-view-model';
 import {
   createInitialSessionState,
   transitionSessionState,
@@ -38,6 +41,27 @@ export type AssistantControllerEvent =
       callId: string;
       toolName: string;
       message: string;
+      draft: ConfirmationDraft;
+    }
+  | { type: 'applying'; callId: string; toolName: string }
+  | {
+      type: 'revision_requested';
+      callId: string;
+      toolName: string;
+      correction: string;
+    }
+  | {
+      type: 'succeeded';
+      callId: string;
+      toolName: string;
+      summary: string;
+    }
+  | { type: 'failed'; callId: string; toolName: string; message: string }
+  | {
+      type: 'delivery_failed';
+      callId: string;
+      toolName: string;
+      message: string;
     };
 
 export interface AssistantControllerDependencies {
@@ -56,6 +80,7 @@ export interface AssistantController {
   stopMicrophone(): void;
   sendText(text: string): void;
   confirmToolCall(callId: string): Promise<void>;
+  requestRevision(callId: string): boolean;
   cancelToolCall(callId: string): void;
   dispose(): void;
   getState(): SessionState;
@@ -68,19 +93,24 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isSerializedWebMcpEnvelope(
   value: unknown,
+  expectedToolName: string,
 ): value is Record<string, unknown> {
   return (
     isRecord(value) &&
     typeof value.ok === 'boolean' &&
     typeof value.tool === 'string' &&
-    value.tool.length > 0 &&
+    value.tool === expectedToolName &&
     typeof value.actionId === 'string' &&
-    Number.isSafeInteger(value.stateRevision)
+    value.actionId.trim().length > 0 &&
+    typeof value.stateRevision === 'number' &&
+    Number.isSafeInteger(value.stateRevision) &&
+    value.stateRevision >= 0
   );
 }
 
 function decodeWebMcpResult(
   serialized: string,
+  expectedToolName: string,
 ):
   | { kind: 'success'; value: Record<string, unknown> }
   | { kind: 'failure'; value: Record<string, unknown> }
@@ -92,13 +122,56 @@ function decodeWebMcpResult(
     return { kind: 'legacy', value: serialized };
   }
 
-  if (!isSerializedWebMcpEnvelope(parsed)) {
+  if (!isSerializedWebMcpEnvelope(parsed, expectedToolName)) {
     return { kind: 'legacy', value: serialized };
   }
 
   return parsed.ok
     ? { kind: 'success', value: parsed }
     : { kind: 'failure', value: parsed };
+}
+
+const MAX_LIFECYCLE_MESSAGE_LENGTH = 240;
+const TOOL_RESPONSE_DELIVERY_FAILURE =
+  'The change was applied locally, but the assistant did not receive the result. Reconnect Live Voice Assistant to continue.';
+
+function boundedLifecycleMessage(value: string): string {
+  return Array.from(value)
+    .filter((character) => {
+      const codePoint = character.codePointAt(0) ?? 0;
+      return codePoint > 0x1f && codePoint !== 0x7f;
+    })
+    .join('')
+    .trim()
+    .slice(0, MAX_LIFECYCLE_MESSAGE_LENGTH);
+}
+
+function decodedResultMessage(
+  decoded:
+    | { kind: 'success'; value: Record<string, unknown> }
+    | { kind: 'failure'; value: Record<string, unknown> }
+    | { kind: 'legacy'; value: string },
+  fallback: string,
+): string {
+  if (decoded.kind === 'legacy') return boundedLifecycleMessage(fallback);
+
+  if (decoded.kind === 'success') {
+    const visibleEffect = decoded.value.visibleEffect;
+    if (typeof visibleEffect === 'string' && visibleEffect.trim()) {
+      return boundedLifecycleMessage(visibleEffect);
+    }
+    const message = decoded.value.message;
+    if (typeof message === 'string' && message.trim()) {
+      return boundedLifecycleMessage(message);
+    }
+    return boundedLifecycleMessage(fallback);
+  }
+
+  const error = decoded.value.error;
+  if (isRecord(error) && typeof error.message === 'string') {
+    return boundedLifecycleMessage(error.message);
+  }
+  return boundedLifecycleMessage(fallback);
 }
 
 export function createAssistantController(
@@ -113,6 +186,7 @@ export function createAssistantController(
   let clientUnsubscribe: (() => void) | undefined;
   let pagehideListener: (() => void) | undefined;
   let turnInterrupted = false;
+  let pendingReplyText = '';
   interface QueuedCall {
     call: ToolCall;
     generation: number;
@@ -130,13 +204,31 @@ export function createAssistantController(
     }
   };
 
+  const sendToolResponseSafely = (
+    response: Parameters<GeminiLiveClient['sendToolResponse']>[0],
+  ): boolean => {
+    try {
+      return dependencies.client.sendToolResponse(response) !== false;
+    } catch {
+      // A local mutation or cancellation must not be reclassified because the
+      // provider socket closed while its response was being sent.
+      return false;
+    }
+  };
+
+  type DecodedToolResult = ReturnType<typeof decodeWebMcpResult>;
+  interface ToolResponseOutcome {
+    delivered: boolean;
+    decoded?: DecodedToolResult;
+  }
+
   const sendToolResponse = (
     call: ToolCall,
     response: ToolBridgeResponse,
-  ): void => {
+  ): ToolResponseOutcome => {
     if (response.kind === 'result') {
-      const decoded = decodeWebMcpResult(response.result);
-      dependencies.client.sendToolResponse({
+      const decoded = decodeWebMcpResult(response.result, call.name);
+      const delivered = sendToolResponseSafely({
         callId: call.callId,
         name: call.name,
         response:
@@ -144,11 +236,11 @@ export function createAssistantController(
             ? decoded.value
             : { result: decoded.value },
       });
-      return;
+      return { decoded, delivered };
     }
 
     if (response.kind === 'invalid_arguments') {
-      dependencies.client.sendToolResponse({
+      const delivered = sendToolResponseSafely({
         callId: call.callId,
         name: call.name,
         response: {
@@ -161,13 +253,24 @@ export function createAssistantController(
           },
         },
       });
-      return;
+      return { delivered };
     }
 
-    dependencies.client.sendToolResponse({
+    const delivered = sendToolResponseSafely({
       callId: call.callId,
       name: call.name,
       response: { error: response.message },
+    });
+    return { delivered };
+  };
+
+  const emitDeliveryFailure = (call: ToolCall, delivered: boolean): void => {
+    if (delivered) return;
+    emit({
+      type: 'delivery_failed',
+      callId: call.callId,
+      toolName: call.name,
+      message: TOOL_RESPONSE_DELIVERY_FAILURE,
     });
   };
 
@@ -176,6 +279,7 @@ export function createAssistantController(
     callQueue.length = 0;
     pendingConfirmations.clear();
     turnInterrupted = false;
+    pendingReplyText = '';
   };
 
   const isSessionActive = (generation: number): boolean => {
@@ -217,35 +321,216 @@ export function createAssistantController(
             continue;
           }
           if (response.kind === 'result') {
-            sendToolResponse(item.call, response);
+            const outcome = sendToolResponse(item.call, response);
+            emitDeliveryFailure(item.call, outcome.delivered);
           } else if (response.kind === 'confirmation_required') {
+            pendingReplyText = '';
             pendingConfirmations.set(response.callId, item);
             emit({
               type: 'confirmation_required',
               callId: response.callId,
               toolName: response.toolName,
               message: response.message,
+              draft: response.draft,
             });
             break;
           } else {
-            sendToolResponse(item.call, response);
+            const outcome = sendToolResponse(item.call, response);
+            emitDeliveryFailure(item.call, outcome.delivered);
           }
         } catch {
           if (!isSessionActive(item.generation)) {
             continue;
           }
-          dependencies.client.sendToolResponse({
+          const delivered = sendToolResponseSafely({
             callId: item.call.callId,
             name: item.call.name,
             response: {
               error: `Execution failed for tool "${item.call.name}".`,
             },
           });
+          emitDeliveryFailure(item.call, delivered);
         }
       }
     } finally {
       isProcessingCalls = false;
     }
+  };
+
+  const getPendingConfirmation = (): PendingConfirmation | undefined => {
+    return pendingConfirmations.values().next().value as
+      PendingConfirmation | undefined;
+  };
+
+  const removePendingConfirmation = (pending: PendingConfirmation): void => {
+    for (const [key, value] of pendingConfirmations) {
+      if (value === pending) {
+        pendingConfirmations.delete(key);
+        return;
+      }
+    }
+  };
+
+  const settleSupersededQueuedCalls = (generation: number): void => {
+    for (const item of callQueue) {
+      if (item.generation !== generation) continue;
+      try {
+        dependencies.client.sendToolResponse({
+          callId: item.call.callId,
+          name: item.call.name,
+          response: {
+            error: {
+              code: 'USER_REVISION_SUPERSEDED',
+              message:
+                'A queued action was not executed because the user requested a revision.',
+            },
+          },
+        });
+      } catch {
+        // A transport failure must not allow a superseded call to execute.
+      }
+    }
+    callQueue.length = 0;
+  };
+
+  const requestRevision = (
+    pending: PendingConfirmation,
+    correction: string,
+  ): boolean => {
+    if (!isSessionActive(pending.generation)) return false;
+    pendingReplyText = '';
+    removePendingConfirmation(pending);
+    settleSupersededQueuedCalls(pending.generation);
+    sendToolResponseSafely({
+      callId: pending.call.callId,
+      name: pending.call.name,
+      response: {
+        error: {
+          code: 'USER_REVISION_REQUESTED',
+          message: 'The user requested a revision before execution.',
+          correction,
+        },
+      },
+    });
+    emit({
+      type: 'revision_requested',
+      callId: pending.call.callId,
+      toolName: pending.call.name,
+      correction,
+    });
+    void processCallQueue();
+    return true;
+  };
+
+  const requestRevisionForCall = (
+    callId: string,
+    correction = 'The user requested a correction.',
+  ): boolean => {
+    if (isDisposed) return false;
+    const pending = pendingConfirmations.get(callId);
+    if (!pending) return false;
+    return requestRevision(pending, correction);
+  };
+
+  const confirmToolCall = async (callId: string): Promise<void> => {
+    if (isDisposed) return;
+    const pending = pendingConfirmations.get(callId);
+    if (!pending) return;
+    pendingReplyText = '';
+    pendingConfirmations.delete(callId);
+    if (!isSessionActive(pending.generation)) return;
+
+    emit({
+      type: 'applying',
+      callId: pending.call.callId,
+      toolName: pending.call.name,
+    });
+
+    try {
+      const response = await dependencies.toolBridge.executeToolCall(
+        pending.call,
+        { confirmed: true },
+      );
+      if (!isSessionActive(pending.generation)) return;
+
+      if (response.kind === 'result') {
+        const outcome = sendToolResponse(pending.call, response);
+        if (outcome.decoded?.kind === 'success') {
+          emit({
+            type: 'succeeded',
+            callId: pending.call.callId,
+            toolName: pending.call.name,
+            summary: decodedResultMessage(
+              outcome.decoded,
+              'The requested change was applied.',
+            ),
+          });
+        } else {
+          emit({
+            type: 'failed',
+            callId: pending.call.callId,
+            toolName: pending.call.name,
+            message: decodedResultMessage(
+              outcome.decoded ?? { kind: 'legacy', value: '' },
+              'The requested change could not be verified.',
+            ),
+          });
+        }
+        emitDeliveryFailure(pending.call, outcome.delivered);
+      } else if (response.kind === 'confirmation_required') {
+        const delivered = sendToolResponseSafely({
+          callId: pending.call.callId,
+          name: pending.call.name,
+          response: { error: 'Tool confirmation failed unexpectedly.' },
+        });
+        emit({
+          type: 'failed',
+          callId: pending.call.callId,
+          toolName: pending.call.name,
+          message: 'The requested change could not be confirmed.',
+        });
+        emitDeliveryFailure(pending.call, delivered);
+      } else {
+        const outcome = sendToolResponse(pending.call, response);
+        emit({
+          type: 'failed',
+          callId: pending.call.callId,
+          toolName: pending.call.name,
+          message: boundedLifecycleMessage(response.message),
+        });
+        emitDeliveryFailure(pending.call, outcome.delivered);
+      }
+    } catch {
+      if (!isSessionActive(pending.generation)) return;
+      const message = `Execution failed for tool "${pending.call.name}".`;
+      const delivered = sendToolResponseSafely({
+        callId: pending.call.callId,
+        name: pending.call.name,
+        response: { error: message },
+      });
+      emit({
+        type: 'failed',
+        callId: pending.call.callId,
+        toolName: pending.call.name,
+        message: boundedLifecycleMessage(message),
+      });
+      emitDeliveryFailure(pending.call, delivered);
+    } finally {
+      void processCallQueue();
+    }
+  };
+
+  const handlePendingReply = (text: string, final: boolean): void => {
+    const pending = getPendingConfirmation();
+    if (!pending || !isSessionActive(pending.generation)) return;
+    pendingReplyText = mergeLiveTextChunks(pendingReplyText, text);
+    const decision = classifyConfirmationReply(pendingReplyText, { final });
+    if (decision.kind === 'interim') return;
+    if (decision.kind === 'affirmative') {
+      void confirmToolCall(pending.call.callId);
+      return;
+    }
+    if (decision.text) requestRevision(pending, decision.text);
   };
 
   const handleClientEvent = (event: GeminiLiveEvent) => {
@@ -289,6 +574,9 @@ export function createAssistantController(
           text: event.text,
           final: event.final,
         });
+        if (event.speaker === 'user') {
+          handlePendingReply(event.text, event.final);
+        }
         break;
       case 'turn_interrupted':
         turnInterrupted = true;
@@ -407,47 +695,17 @@ export function createAssistantController(
     },
 
     sendText(text: string): void {
+      const pending = getPendingConfirmation();
+      if (pending && isSessionActive(pending.generation)) {
+        handlePendingReply(text, true);
+        return;
+      }
       dependencies.client.sendText(text);
     },
 
-    async confirmToolCall(callId: string): Promise<void> {
-      if (isDisposed) return;
-      const pending = pendingConfirmations.get(callId);
-      if (!pending) return;
-      pendingConfirmations.delete(callId);
-      if (!isSessionActive(pending.generation)) return;
+    confirmToolCall,
 
-      try {
-        const response = await dependencies.toolBridge.executeToolCall(
-          pending.call,
-          { confirmed: true },
-        );
-        if (!isSessionActive(pending.generation)) return;
-
-        if (response.kind === 'result') {
-          sendToolResponse(pending.call, response);
-        } else if (response.kind === 'confirmation_required') {
-          dependencies.client.sendToolResponse({
-            callId: pending.call.callId,
-            name: pending.call.name,
-            response: { error: 'Tool confirmation failed unexpectedly.' },
-          });
-        } else {
-          sendToolResponse(pending.call, response);
-        }
-      } catch {
-        if (!isSessionActive(pending.generation)) return;
-        dependencies.client.sendToolResponse({
-          callId: pending.call.callId,
-          name: pending.call.name,
-          response: {
-            error: `Execution failed for tool "${pending.call.name}".`,
-          },
-        });
-      } finally {
-        void processCallQueue();
-      }
-    },
+    requestRevision: requestRevisionForCall,
 
     cancelToolCall(callId: string): void {
       if (isDisposed) return;
@@ -457,7 +715,7 @@ export function createAssistantController(
       if (!isSessionActive(pending.generation)) return;
 
       try {
-        dependencies.client.sendToolResponse({
+        sendToolResponseSafely({
           callId: pending.call.callId,
           name: pending.call.name,
           response: { error: 'Action cancelled by the user.' },

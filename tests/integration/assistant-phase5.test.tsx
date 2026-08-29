@@ -19,6 +19,7 @@ import {
   type CivicFlowStore,
 } from '../../src/application/store';
 import { AgentCompanion } from '../../src/ui/agent-companion/AgentCompanion';
+import { CoverageSection } from '../../src/ui/sections/CoverageSection';
 import { OperationStatus } from '../../src/ui/feedback/OperationStatus';
 import { FakeModelContextPort } from '../../src/webmcp/fake-model-context-port';
 import { WebMcpRegistryManager } from '../../src/webmcp/registry-manager';
@@ -35,7 +36,7 @@ class FakeGeminiClient implements GeminiLiveClient {
   });
   readonly sendText = vi.fn();
   readonly sendAudio = vi.fn();
-  readonly sendToolResponse = vi.fn((response: LiveToolResponse) => response);
+  readonly sendToolResponse = vi.fn(() => true);
 
   subscribe(listener: (event: GeminiLiveEvent) => void): () => void {
     this.listeners.add(listener);
@@ -139,6 +140,35 @@ function VisibleAssistant({ harness }: { harness: AssistantHarness }) {
   );
 }
 
+function VisibleMountedCoverage({ harness }: { harness: AssistantHarness }) {
+  const snapshot = useSyncExternalStore(
+    harness.store.subscribe,
+    harness.store.getState,
+    harness.store.getState,
+  );
+
+  return (
+    <>
+      <CoverageSection
+        application={snapshot.application}
+        disabled={false}
+        dispatch={harness.store.dispatch}
+        onNavigate={() => {}}
+      />
+      <AgentCompanion
+        capabilities={snapshot.ui.capabilities}
+        activity={snapshot.ui.activity}
+        assistantController={harness.controller}
+        assistantEnabled
+        activeOperation={snapshot.ui.activeOperation}
+        isOpen={false}
+        onClose={() => {}}
+        onOpen={() => {}}
+      />
+    </>
+  );
+}
+
 describe('Phase 5 local assistant integration matrix', () => {
   it('proposes a complete household member, executes once only after UI confirmation, and returns structured success', async () => {
     const harness = await createHarness();
@@ -163,7 +193,7 @@ describe('Phase 5 local assistant integration matrix', () => {
 
       await waitFor(() =>
         expect(
-          screen.getByRole('button', { name: 'Confirm' }),
+          screen.getByRole('button', { name: 'Confirm and apply' }),
         ).toBeInTheDocument(),
       );
       expect(executeTool).not.toHaveBeenCalled();
@@ -174,7 +204,7 @@ describe('Phase 5 local assistant integration matrix', () => {
         harness.store.getState().application.householdMembers,
       ).toHaveLength(0);
 
-      screen.getByRole('button', { name: 'Confirm' }).click();
+      screen.getByRole('button', { name: 'Confirm and apply' }).click();
       await waitFor(() => expect(executeTool).toHaveBeenCalledTimes(1));
       await waitFor(() =>
         expect(
@@ -262,7 +292,7 @@ describe('Phase 5 local assistant integration matrix', () => {
 
       await waitFor(() =>
         expect(
-          screen.getByRole('button', { name: 'Confirm' }),
+          screen.getByRole('button', { name: 'Confirm and apply' }),
         ).toBeInTheDocument(),
       );
       expect(harness.store.getState().application.revision).toBe(
@@ -272,7 +302,7 @@ describe('Phase 5 local assistant integration matrix', () => {
         0,
       );
 
-      screen.getByRole('button', { name: 'Confirm' }).click();
+      screen.getByRole('button', { name: 'Confirm and apply' }).click();
       await waitFor(() =>
         expect(screen.getByTestId('operation-status')).toHaveAttribute(
           'data-phase',
@@ -331,10 +361,10 @@ describe('Phase 5 local assistant integration matrix', () => {
 
       await waitFor(() =>
         expect(
-          screen.getByRole('button', { name: 'Confirm' }),
+          screen.getByRole('button', { name: 'Confirm and apply' }),
         ).toBeInTheDocument(),
       );
-      screen.getByRole('button', { name: 'Confirm' }).click();
+      screen.getByRole('button', { name: 'Confirm and apply' }).click();
       await waitFor(() =>
         expect(
           harness.store.getState().application.incomeSources[0],
@@ -514,6 +544,145 @@ describe('Phase 5 local assistant integration matrix', () => {
       expect(harness.store.getState().application.revision).toBe(
         beforeRevision,
       );
+    } finally {
+      closeHarness(harness);
+    }
+  });
+
+  it('revises a complete add-income proposal through the same pending call and confirms only the replacement', async () => {
+    const harness = await createHarness();
+    const executeTool = vi.spyOn(harness.port, 'executeTool');
+    render(<VisibleAssistant harness={harness} />);
+
+    try {
+      const originalCall = {
+        callId: 'income-proposal-original',
+        name: 'add_income_source' as const,
+        argumentsJson: JSON.stringify({
+          ownerName: 'Maya Carter',
+          employerName: 'Acme Health',
+          amount: 1250,
+          frequency: 'monthly',
+        }),
+      };
+      harness.client.emit({
+        type: 'function_call',
+        calls: [originalCall],
+      });
+      await waitFor(() =>
+        expect(screen.getByTestId('tool-confirmation-modal')).toBeVisible(),
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'Need correction' }));
+
+      expect(harness.client.sendText).not.toHaveBeenCalled();
+      expect(executeTool).not.toHaveBeenCalled();
+      expect(
+        getToolResponse(harness.client, originalCall.callId),
+      ).toMatchObject({
+        response: {
+          error: {
+            code: 'USER_REVISION_REQUESTED',
+            correction: expect.stringContaining('correction'),
+          },
+        },
+      });
+
+      const revisedCall = {
+        ...originalCall,
+        callId: 'income-proposal-revised',
+        argumentsJson: JSON.stringify({
+          ownerName: 'Maya Carter',
+          employerName: 'Acme Dental',
+          amount: 1250,
+          frequency: 'monthly',
+        }),
+      };
+      harness.client.emit({ type: 'function_call', calls: [revisedCall] });
+      await waitFor(() =>
+        expect(screen.getByTestId('tool-confirmation-modal')).toBeVisible(),
+      );
+      expect(screen.getByTestId('tool-confirmation-modal')).toHaveTextContent(
+        'Acme Dental',
+      );
+
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Confirm and apply' }),
+      );
+      await waitFor(() =>
+        expect(harness.store.getState().application.incomeSources).toHaveLength(
+          1,
+        ),
+      );
+      expect(
+        harness.store.getState().application.incomeSources[0],
+      ).toMatchObject({ employerName: 'Acme Dental' });
+      expect(executeTool).toHaveBeenCalledTimes(1);
+      expect(
+        getToolResponse(harness.client, originalCall.callId),
+      ).toMatchObject({
+        response: {
+          error: {
+            code: 'USER_REVISION_REQUESTED',
+          },
+        },
+      });
+      expect(getToolResponse(harness.client, revisedCall.callId)).toMatchObject(
+        {
+          response: {
+            result: expect.objectContaining({
+              ok: true,
+              tool: 'add_income_source',
+            }),
+          },
+        },
+      );
+    } finally {
+      executeTool.mockRestore();
+      closeHarness(harness);
+    }
+  });
+
+  it('updates an already-mounted CoverageSection from a confirmed external coverage mutation', async () => {
+    const harness = await createHarness();
+    render(<VisibleMountedCoverage harness={harness} />);
+
+    try {
+      fireEvent.change(
+        screen.getByLabelText('Coverage status for Maya Carter'),
+        { target: { value: 'covered' } },
+      );
+      fireEvent.change(screen.getByLabelText('Provider for Maya Carter'), {
+        target: { value: 'Unsaved local draft' },
+      });
+
+      const call = {
+        callId: 'coverage-mounted-1',
+        name: 'set_current_coverage' as const,
+        argumentsJson: JSON.stringify({
+          memberNames: ['Maya Carter'],
+          status: 'none',
+        }),
+      };
+      harness.client.emit({ type: 'function_call', calls: [call] });
+      await waitFor(() =>
+        expect(screen.getByTestId('tool-confirmation-modal')).toBeVisible(),
+      );
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Confirm and apply' }),
+      );
+
+      await waitFor(() =>
+        expect(
+          screen.getByLabelText('Coverage status for Maya Carter'),
+        ).toHaveValue('none'),
+      );
+      expect(
+        screen.queryByLabelText('Provider for Maya Carter'),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText('1 people have a recorded coverage status.'),
+      ).toBeInTheDocument();
     } finally {
       closeHarness(harness);
     }

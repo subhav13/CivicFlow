@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 
 import { setCurrentCoverage } from '../../application/commands';
 import {
@@ -44,6 +44,26 @@ function createDrafts(
   );
 }
 
+type CoverageRecord =
+  BaseSectionProps['application']['coverageRecords'][number];
+
+function draftFromRecord(record: CoverageRecord | undefined): CoverageDraft {
+  return {
+    status: record?.status ?? '',
+    providerName: record?.providerName ?? '',
+    planName: record?.planName ?? '',
+  };
+}
+
+function coverageRecordSignature(record: CoverageRecord | undefined): string {
+  return JSON.stringify([
+    record?.personId,
+    record?.status,
+    record?.providerName ?? '',
+    record?.planName ?? '',
+  ]);
+}
+
 export function CoverageSection({
   application,
   dispatch,
@@ -59,6 +79,75 @@ export function CoverageSection({
   const [receipt, setReceipt] = useState<ReturnType<
     BaseSectionProps['dispatch']
   > | null>(null);
+  const previousApplicationRef = useRef(application);
+
+  useEffect(() => {
+    const previousApplication = previousApplicationRef.current;
+    const previousRecords = new Map(
+      previousApplication.coverageRecords.map((record) => [
+        record.personId,
+        record,
+      ]),
+    );
+    const currentRecords = new Map(
+      application.coverageRecords.map((record) => [record.personId, record]),
+    );
+    const currentPeople = getApplicantAndHouseholdPeople(application).filter(
+      (person) => person.applyingForCoverage,
+    );
+    const currentPersonIds = new Set(currentPeople.map((person) => person.id));
+    const changedPersonIds = new Set(
+      currentPeople
+        .filter((person) => {
+          const previousRecord = previousRecords.get(person.id);
+          const currentRecord = currentRecords.get(person.id);
+          return (
+            !Object.prototype.hasOwnProperty.call(drafts, person.id) ||
+            coverageRecordSignature(previousRecord) !==
+              coverageRecordSignature(currentRecord)
+          );
+        })
+        .map((person) => person.id),
+    );
+    const removedPersonIds = new Set(
+      Object.keys(drafts).filter((personId) => !currentPersonIds.has(personId)),
+    );
+    const reconciledPersonIds = new Set([
+      ...changedPersonIds,
+      ...removedPersonIds,
+    ]);
+
+    setDrafts((currentDrafts) => {
+      const nextDrafts = { ...currentDrafts };
+      let changed = false;
+
+      for (const person of currentPeople) {
+        const currentRecord = currentRecords.get(person.id);
+        if (changedPersonIds.has(person.id)) {
+          nextDrafts[person.id] = draftFromRecord(currentRecord);
+          changed = true;
+        }
+      }
+
+      for (const personId of Object.keys(nextDrafts)) {
+        if (!currentPersonIds.has(personId)) {
+          delete nextDrafts[personId];
+          changed = true;
+        }
+      }
+
+      return changed ? nextDrafts : currentDrafts;
+    });
+
+    if (reconciledPersonIds.size > 0) {
+      setErrors((currentErrors) => {
+        const nextErrors = { ...currentErrors };
+        for (const personId of reconciledPersonIds) delete nextErrors[personId];
+        return nextErrors;
+      });
+    }
+    previousApplicationRef.current = application;
+  }, [application, drafts]);
 
   function updateDraft(personId: string, change: Partial<CoverageDraft>) {
     setDrafts((current) => ({

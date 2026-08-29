@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { createCurrentToolSurface } from '../../src/assistant/current-tool-surface';
+import {
+  createConfirmationDraft,
+  createEffectiveConfirmationDraft,
+} from '../../src/assistant/tool-confirmation-view-model';
 import type { RegisteredToolRef } from '../../src/webmcp/model-context-port';
 import type { ModelContextPort } from '../../src/webmcp/model-context-port';
 import { TOOL_CATALOG } from '../../src/webmcp/tool-catalog';
@@ -49,6 +53,188 @@ function makeBrowserPort(
 }
 
 describe('Gemini tool bridge Contract (Phase 2 Packet 2.2)', () => {
+  it('maps every current mutation to an allowlisted human draft without raw or internal data', () => {
+    const cases = [
+      {
+        tool: 'add_household_member',
+        input: {
+          firstName: 'Emma',
+          lastName: 'Carter',
+          ageYears: 7,
+          relationship: 'daughter',
+          applyingForCoverage: true,
+          internalId: 'person-secret',
+        },
+        title: 'Add household member',
+        fields: [
+          ['First name', 'Emma'],
+          ['Last name', 'Carter'],
+          ['Age', '7'],
+          ['Relationship', 'Daughter'],
+          ['Applying for coverage', 'Yes'],
+        ],
+      },
+      {
+        tool: 'update_household_member',
+        input: {
+          firstName: 'Alex',
+          lastName: 'Rivera',
+          ageYears: 42,
+          relationship: 'spouse',
+          applyingForCoverage: false,
+        },
+        title: 'Update household member',
+        fields: [
+          ['First name', 'Alex'],
+          ['Last name', 'Rivera'],
+          ['Age', '42'],
+          ['Relationship', 'Spouse'],
+          ['Applying for coverage', 'No'],
+        ],
+      },
+      {
+        tool: 'add_income_source',
+        input: {
+          ownerName: 'Maya Carter',
+          employerName: 'Acme Health',
+          amount: 1250,
+          frequency: 'monthly',
+          ownerPersonId: 'person-secret',
+        },
+        title: 'Add income source',
+        fields: [
+          ['Member', 'Maya Carter'],
+          ['Employer or source', 'Acme Health'],
+          ['Amount', '$1,250.00'],
+          ['Frequency', 'Monthly'],
+        ],
+      },
+      {
+        tool: 'update_income_source',
+        input: { employerName: 'Acme Dental', amount: 900 },
+        title: 'Update income source',
+        fields: [
+          ['Employer or source', 'Acme Dental'],
+          ['Amount', '$900.00'],
+        ],
+      },
+      {
+        tool: 'set_current_coverage',
+        input: {
+          memberNames: ['Maya Carter', 'Emma Carter'],
+          status: 'covered',
+          providerName: 'Acme Health',
+          planName: 'Gold',
+          personId: 'person-secret',
+        },
+        title: 'Set current coverage',
+        fields: [
+          ['Members', 'Maya Carter, Emma Carter'],
+          ['Coverage status', 'Currently covered'],
+          ['Provider', 'Acme Health'],
+          ['Plan', 'Gold'],
+        ],
+      },
+      {
+        tool: 'review_application',
+        input: { internalState: 'secret' },
+        title: 'Review application',
+        fields: [['Action', 'Review application']],
+      },
+    ] as const;
+
+    for (const testCase of cases) {
+      const draft = createConfirmationDraft(testCase.tool, testCase.input);
+      expect(draft).toEqual({
+        title: testCase.title,
+        fields: testCase.fields.map(([label, value]) => ({ label, value })),
+      });
+      const serialized = JSON.stringify(draft);
+      expect(serialized).not.toContain('argumentsJson');
+      expect(serialized).not.toContain('callId');
+      expect(serialized).not.toContain('internalId');
+      expect(serialized).not.toContain('ownerPersonId');
+      expect(serialized).not.toContain('personId');
+      expect(serialized).not.toContain('internalState');
+    }
+
+    expect(
+      createConfirmationDraft('navigate_to_section', { section: 'income' }),
+    ).toBeUndefined();
+  });
+
+  it('builds complete effective drafts for contextual updates and omitted defaults', () => {
+    expect(
+      createEffectiveConfirmationDraft(
+        'add_household_member',
+        {
+          firstName: 'Emma',
+          ageYears: 7,
+          relationship: 'daughter',
+          applyingForCoverage: true,
+        },
+        { applicantLastName: 'Carter' },
+      ),
+    ).toEqual({
+      title: 'Add household member',
+      fields: [
+        { label: 'First name', value: 'Emma' },
+        { label: 'Last name', value: 'Carter' },
+        { label: 'Age', value: '7' },
+        { label: 'Relationship', value: 'Daughter' },
+        { label: 'Applying for coverage', value: 'Yes' },
+      ],
+    });
+
+    expect(
+      createEffectiveConfirmationDraft(
+        'update_income_source',
+        { amount: 900 },
+        {
+          selectedIncomeSource: {
+            ownerName: 'Maya Carter',
+            employerName: 'Acme Health',
+            amount: 1250,
+            frequency: 'monthly',
+          },
+        },
+      ),
+    ).toEqual({
+      title: 'Update income source',
+      fields: [
+        { label: 'Member', value: 'Maya Carter' },
+        { label: 'Employer or source', value: 'Acme Health' },
+        { label: 'Amount', value: '$900.00' },
+        { label: 'Frequency', value: 'Monthly' },
+      ],
+    });
+
+    expect(
+      createEffectiveConfirmationDraft(
+        'update_household_member',
+        { applyingForCoverage: false },
+        {
+          selectedHouseholdMember: {
+            firstName: 'Emma',
+            lastName: 'Carter',
+            ageYears: 7,
+            relationship: 'daughter',
+            applyingForCoverage: true,
+          },
+        },
+      ),
+    ).toEqual({
+      title: 'Update household member',
+      fields: [
+        { label: 'First name', value: 'Emma' },
+        { label: 'Last name', value: 'Carter' },
+        { label: 'Age', value: '7' },
+        { label: 'Relationship', value: 'Daughter' },
+        { label: 'Applying for coverage', value: 'No' },
+      ],
+    });
+  });
+
   it('maps one registered tool to an exact provider-neutral function declaration', async () => {
     const { mapRegisteredTool } = await import(
       /* @vite-ignore */
@@ -99,6 +285,58 @@ describe('Gemini tool bridge Contract (Phase 2 Packet 2.2)', () => {
     await expect(bridge.listFunctions()).resolves.toEqual([
       expect.objectContaining({ name: 'get_next_actions' }),
     ]);
+  });
+
+  it('uses the runtime draft factory for confirmation previews', async () => {
+    const { createGeminiToolBridge } = await import(
+      /* @vite-ignore */
+      '../../src/assistant/gemini-tool-bridge'
+    );
+    const surface = makeSurface([TOOL_CATALOG.add_income_source]);
+    const confirmationDraftFactory = vi.fn(() => ({
+      title: 'Add income source',
+      fields: [
+        { label: 'Member', value: 'Maya Carter' },
+        { label: 'Employer or source', value: 'Acme Health' },
+        { label: 'Amount', value: '$1,250.00' },
+        { label: 'Frequency', value: 'Monthly' },
+      ],
+    }));
+    const bridge = createGeminiToolBridge(surface, {
+      confirmationDraftFactory,
+    });
+
+    const input = {
+      ownerName: 'Maya Carter',
+      employerName: 'Acme Health',
+      amount: 1250,
+      frequency: 'monthly',
+    };
+    const response = await bridge.executeToolCall({
+      callId: 'call-factory',
+      name: 'add_income_source',
+      argumentsJson: JSON.stringify(input),
+    });
+
+    expect(confirmationDraftFactory).toHaveBeenCalledWith(
+      'add_income_source',
+      input,
+    );
+    expect(response).toEqual({
+      kind: 'confirmation_required',
+      callId: 'call-factory',
+      toolName: 'add_income_source',
+      message: expect.any(String),
+      draft: {
+        title: 'Add income source',
+        fields: [
+          { label: 'Member', value: 'Maya Carter' },
+          { label: 'Employer or source', value: 'Acme Health' },
+          { label: 'Amount', value: '$1,250.00' },
+          { label: 'Frequency', value: 'Monthly' },
+        ],
+      },
+    });
   });
 
   it('uses normalized browser schemas for declarations and validation while preserving the raw execution ref', async () => {

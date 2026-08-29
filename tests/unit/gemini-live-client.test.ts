@@ -48,6 +48,12 @@ class FakeSocket implements LiveSocket {
   }
 }
 
+class ThrowingSocket extends FakeSocket {
+  send(): void {
+    throw new Error('socket is closing');
+  }
+}
+
 const credential: EphemeralSessionCredential = {
   accessToken: 'ephemeral-test-token',
   expiresAt: '2026-08-28T12:00:00.000Z',
@@ -262,7 +268,7 @@ describe('Gemini Live protocol client', () => {
         type: 'transcript',
         speaker: 'user',
         text: 'I need help',
-        final: false,
+        final: true,
       },
       {
         type: 'transcript',
@@ -283,6 +289,34 @@ describe('Gemini Live protocol client', () => {
         JSON.stringify({ serverContent: { generationComplete: true } }),
       ),
     ).toEqual([]);
+  });
+
+  it('distinguishes interim input transcription from authoritative input transcription', () => {
+    expect(
+      parseGeminiLiveMessage(
+        JSON.stringify({
+          serverContent: {
+            interimInputTranscription: { text: "I've confirmed" },
+            inputTranscription: {
+              text: "I've confirmed the details, add it",
+            },
+          },
+        }),
+      ),
+    ).toEqual([
+      {
+        type: 'transcript',
+        speaker: 'user',
+        text: "I've confirmed",
+        final: false,
+      },
+      {
+        type: 'transcript',
+        speaker: 'user',
+        text: "I've confirmed the details, add it",
+        final: true,
+      },
+    ]);
   });
 
   it('parses function calls with exact IDs and JSON arguments', () => {
@@ -470,5 +504,35 @@ describe('Gemini Live protocol client', () => {
     expect(JSON.stringify(message)).not.toContain('instructions');
     expect(JSON.stringify(message)).not.toContain('tools');
     expect(JSON.stringify(message)).not.toContain('model');
+  });
+
+  it('reports whether tool-response delivery was accepted by the socket', async () => {
+    const { client } = createClient();
+    const response = {
+      callId: 'call-disconnected',
+      name: 'read_current_section',
+      response: { result: 'ok' },
+    };
+
+    expect(client.sendToolResponse(response)).toBe(false);
+    await client.connect();
+    expect(client.sendToolResponse(response)).toBe(true);
+
+    client.disconnect();
+    expect(client.sendToolResponse(response)).toBe(false);
+  });
+
+  it('reports false when the active socket rejects a tool response', async () => {
+    const socket = new ThrowingSocket();
+    const { client } = createClient(socket);
+    await client.connect();
+
+    expect(
+      client.sendToolResponse({
+        callId: 'call-throwing',
+        name: 'read_current_section',
+        response: { result: 'ok' },
+      }),
+    ).toBe(false);
   });
 });

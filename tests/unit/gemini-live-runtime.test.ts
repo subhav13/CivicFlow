@@ -336,8 +336,35 @@ describe('local Live runtime', () => {
       'invoke the tool as a proposal without asking for spoken confirmation',
     );
     expect(instructions).toContain(
+      'first speak one concise complete review of every field and value in your normal Live voice',
+    );
+    expect(instructions).toContain(
+      'tell the user the draft is ready for review',
+    );
+    expect(instructions).toContain(
+      'then immediately invoke the tool as a proposal without asking for spoken confirmation or waiting for a spoken reply',
+    );
+    expect(
+      instructions.indexOf('first speak one concise complete review'),
+    ).toBeLessThan(
+      instructions.indexOf('then immediately invoke the tool as a proposal'),
+    );
+    expect(instructions).toContain(
       'CivicFlow will pause the proposal and obtain confirmation through its UI before execution',
     );
+    expect(instructions).toContain(
+      'add_income_source asks for missing fields one at a time in this order: member, employer or source, amount in dollars, frequency',
+    );
+    expect(instructions).toContain(
+      'weekly, every two weeks, monthly, annually',
+    );
+    expect(instructions).toContain(
+      'retain prior explicit answers when a user provides a correction',
+    );
+    expect(instructions).toContain(
+      'Never claim success before receiving a tool response with ok:true',
+    );
+    expect(instructions).toContain('What would you like to do next?');
     expect(instructions).not.toContain(
       "wait for the user's explicit confirmation before invoking",
     );

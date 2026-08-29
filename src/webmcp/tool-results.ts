@@ -93,6 +93,11 @@ export function failureResult(
 
 const MAX_SERIALIZED_LENGTH = 1500;
 
+function boundedActionId(actionId: string): string {
+  const trimmed = actionId.trim();
+  return trimmed ? trimmed.slice(0, 64) : 'action';
+}
+
 export function serializeToolResult<T>(result: ToolResult<T>): string {
   const rawJson = JSON.stringify(result);
   if (rawJson.length <= MAX_SERIALIZED_LENGTH) {
@@ -143,7 +148,7 @@ export function serializeToolResult<T>(result: ToolResult<T>): string {
     const safeSuccess: ToolSuccess<Record<string, unknown>> = {
       ok: true,
       tool: result.tool,
-      actionId: result.actionId.length <= 64 ? result.actionId : 'action',
+      actionId: boundedActionId(result.actionId),
       changed: result.changed,
       message:
         'Operation completed successfully. Details compacted to respect payload limit.',
@@ -161,7 +166,7 @@ export function serializeToolResult<T>(result: ToolResult<T>): string {
     return JSON.stringify({
       ok: true,
       tool: result.tool,
-      actionId: '',
+      actionId: boundedActionId(result.actionId),
       changed: result.changed,
       message: 'Success',
       data: {},
@@ -174,7 +179,7 @@ export function serializeToolResult<T>(result: ToolResult<T>): string {
     const withoutRecovery: ToolFailure = {
       ok: false,
       tool: result.tool,
-      actionId: result.actionId.length <= 64 ? result.actionId : 'action',
+      actionId: boundedActionId(result.actionId),
       error: {
         code: result.error.code,
         message: result.error.message,
@@ -195,7 +200,7 @@ export function serializeToolResult<T>(result: ToolResult<T>): string {
     const withoutFieldErrors: ToolFailure = {
       ok: false,
       tool: result.tool,
-      actionId: result.actionId.length <= 64 ? result.actionId : 'action',
+      actionId: boundedActionId(result.actionId),
       error: {
         code: result.error.code,
         message: result.error.message,
@@ -213,7 +218,7 @@ export function serializeToolResult<T>(result: ToolResult<T>): string {
   const safeFailure: ToolFailure = {
     ok: false,
     tool: result.tool,
-    actionId: result.actionId.length <= 64 ? result.actionId : 'action',
+    actionId: boundedActionId(result.actionId),
     error: {
       code: result.error.code.length <= 32 ? result.error.code : 'ERROR',
       message:
@@ -230,7 +235,7 @@ export function serializeToolResult<T>(result: ToolResult<T>): string {
   return JSON.stringify({
     ok: false,
     tool: result.tool,
-    actionId: '',
+    actionId: boundedActionId(result.actionId),
     error: {
       code: 'ERROR',
       message: 'Operation failed',

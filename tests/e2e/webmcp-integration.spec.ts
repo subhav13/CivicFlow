@@ -181,6 +181,15 @@ test.describe.serial('WebMCP real-browser golden journey (Packet 3.1)', () => {
   });
 
   test('6. set_current_coverage atomically records none for Maya and Emma and both visible cards update', async () => {
+    await sectionButton(page, 'Current Coverage').click();
+    await expect(
+      page.getByRole('heading', { name: 'Current Coverage', exact: true }),
+    ).toBeVisible();
+    const coverageCards = page.locator('.coverage-card');
+    const coverageControls = page.getByLabel(/Coverage status for/);
+    await expect(coverageCards).toHaveCount(2);
+    await expect(coverageControls).toHaveCount(2);
+
     const result = await executeBrowserTool(page, 'set_current_coverage', {
       memberNames: ['Maya Carter', 'Emma Carter'],
       status: 'none',
@@ -189,10 +198,15 @@ test.describe.serial('WebMCP real-browser golden journey (Packet 3.1)', () => {
     expect(result.ok).toBe(true);
     expect(result.changed).toBe(true);
 
-    await sectionButton(page, 'Current Coverage').click();
     await expect(
       page.getByRole('heading', { name: 'Current Coverage', exact: true }),
     ).toBeVisible();
+    await expect(page.locator('main')).toHaveAttribute(
+      'data-section',
+      'coverage',
+    );
+    await expect(coverageCards).toHaveCount(2);
+    await expect(coverageControls).toHaveCount(2);
 
     await expect(
       page.getByLabel('Coverage status for Maya Carter'),

@@ -1,8 +1,20 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { AgentCompanion } from './AgentCompanion';
 import type { ActivityEntry, CapabilitySummary } from '../../application/store';
+import type {
+  AssistantController,
+  AssistantControllerEvent,
+} from '../../assistant/assistant-controller';
+import type { SessionState } from '../../assistant/session-state';
 
 describe('AgentCompanion Component (Packet 2.3)', () => {
   const sampleCapabilities: CapabilitySummary[] = [
@@ -38,6 +50,33 @@ describe('AgentCompanion Component (Packet 2.3)', () => {
       afterRevision: 1,
     },
   ];
+
+  function makeController() {
+    const listeners = new Set<(event: AssistantControllerEvent) => void>();
+    let state: SessionState = { status: 'connected' };
+    const controller = {
+      connect: vi.fn(async () => {}),
+      retry: vi.fn(async () => {}),
+      disconnect: vi.fn(),
+      startMicrophone: vi.fn(async () => {}),
+      stopMicrophone: vi.fn(),
+      sendText: vi.fn(),
+      confirmToolCall: vi.fn(async () => {}),
+      requestRevision: vi.fn(() => true),
+      cancelToolCall: vi.fn(),
+      dispose: vi.fn(),
+      getState: () => state,
+      subscribe: (listener: (event: AssistantControllerEvent) => void) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+      emit: (event: AssistantControllerEvent) => {
+        if (event.type === 'state') state = event.state;
+        for (const listener of listeners) listener(event);
+      },
+    };
+    return controller;
+  }
 
   it('renders latest activity BEFORE capabilities in accessible DOM order', () => {
     render(
@@ -266,5 +305,445 @@ describe('AgentCompanion Component (Packet 2.3)', () => {
     const companionText = screen.getByLabelText('Agent Companion').textContent;
     expect(companionText).not.toMatch(/submit_application/i);
     expect(companionText).not.toMatch(/submitDemo/i);
+  });
+
+  it('renders one body-portal confirmation modal with complete sanitized fields and focus trapping', () => {
+    const controller = makeController();
+    const speechOutput = { speak: vi.fn(), cancel: vi.fn() };
+    render(
+      <AgentCompanion
+        capabilities={sampleCapabilities}
+        assistantController={controller as unknown as AssistantController}
+        assistantEnabled
+        speechOutput={speechOutput}
+        isOpen
+        onClose={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+
+    act(() => {
+      controller.emit({
+        type: 'confirmation_required',
+        callId: 'call-modal-1',
+        toolName: 'add_income_source',
+        message: 'A change is ready for confirmation.',
+        draft: {
+          title: 'Add income source',
+          fields: [
+            { label: 'Member', value: 'Maya Carter' },
+            { label: 'Employer or source', value: 'Acme Health' },
+            { label: 'Amount', value: '$1,250.00' },
+            { label: 'Frequency', value: 'Monthly' },
+          ],
+        },
+      });
+    });
+
+    const modal = document.querySelector('.tool-confirmation-modal');
+    expect(modal).not.toBeNull();
+    expect(document.querySelectorAll('.tool-confirmation-modal')).toHaveLength(
+      1,
+    );
+    expect(modal).toHaveAttribute('role', 'dialog');
+    expect(modal).toHaveAttribute('aria-modal', 'true');
+    expect(modal).toHaveTextContent('Maya Carter');
+    expect(modal).toHaveTextContent('Acme Health');
+    expect(modal).toHaveTextContent('$1,250.00');
+    expect(modal).toHaveTextContent('Monthly');
+    expect(modal).toHaveTextContent('Draft preview');
+    expect(modal).toHaveTextContent(
+      'This is the review screen for the proposed change.',
+    );
+    expect(modal).not.toHaveTextContent('call-modal-1');
+    expect(modal).not.toHaveTextContent('argumentsJson');
+    expect(modal).not.toHaveTextContent('ownerPersonId');
+    expect(
+      document.querySelector('.tool-confirmation-modal-backdrop'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Confirm and apply' }),
+    ).toHaveFocus();
+
+    screen.getByRole('button', { name: 'Cancel' }).focus();
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(
+      screen.getByRole('button', { name: 'Confirm and apply' }),
+    ).toHaveFocus();
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+    expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    expect(screen.queryByRole('textbox', { name: /correction/i })).toBeNull();
+    expect(screen.getByText(/say .*confirm/i)).toBeInTheDocument();
+    expect(speechOutput.speak).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Need correction' }));
+    expect(controller.requestRevision).toHaveBeenCalledWith('call-modal-1');
+    expect(document.querySelector('.tool-confirmation-modal')).not.toBeNull();
+
+    act(() => {
+      controller.emit({
+        type: 'revision_requested',
+        callId: 'call-modal-1',
+        toolName: 'add_income_source',
+        correction: 'The user requested a correction.',
+      });
+    });
+    expect(document.querySelector('.tool-confirmation-modal')).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: /submit|attest/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('does not speak automatically when the confirmation modal opens', () => {
+    const controller = makeController();
+    const speechOutput = { speak: vi.fn(), cancel: vi.fn() };
+    render(
+      <AgentCompanion
+        capabilities={sampleCapabilities}
+        assistantController={controller as unknown as AssistantController}
+        assistantEnabled
+        speechOutput={speechOutput}
+        isOpen={false}
+        onClose={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+
+    act(() => {
+      controller.emit({
+        type: 'confirmation_required',
+        callId: 'call-no-auto-speech',
+        toolName: 'add_income_source',
+        message: 'A change is ready for confirmation.',
+        draft: {
+          title: 'Add income source',
+          fields: [{ label: 'Employer or source', value: 'Acme Health' }],
+        },
+      });
+    });
+
+    expect(speechOutput.speak).not.toHaveBeenCalled();
+  });
+
+  it('keeps the compact companion closed after correction when the desktop panel is visible', () => {
+    const controller = makeController();
+    const onOpen = vi.fn();
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = vi.fn().mockReturnValue({ matches: false });
+
+    render(
+      <AgentCompanion
+        capabilities={[]}
+        assistantController={controller as unknown as AssistantController}
+        assistantEnabled
+        isOpen={false}
+        onClose={() => {}}
+        onOpen={onOpen}
+      />,
+    );
+
+    act(() => {
+      controller.emit({
+        type: 'confirmation_required',
+        callId: 'call-desktop-correction',
+        toolName: 'add_household_member',
+        message: 'Review the household member.',
+        draft: {
+          title: 'Add household member',
+          fields: [{ label: 'First name', value: 'Emma' }],
+        },
+      });
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Need correction' }));
+    act(() => {
+      controller.emit({
+        type: 'revision_requested',
+        callId: 'call-desktop-correction',
+        toolName: 'add_household_member',
+        correction: 'The user requested a correction.',
+      });
+    });
+
+    expect(onOpen).not.toHaveBeenCalled();
+    window.matchMedia = originalMatchMedia;
+  });
+
+  it('opens the companion after correction when compact layout hides the side panel', () => {
+    const controller = makeController();
+    const onOpen = vi.fn();
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+
+    render(
+      <AgentCompanion
+        capabilities={[]}
+        assistantController={controller as unknown as AssistantController}
+        assistantEnabled
+        isOpen={false}
+        onClose={() => {}}
+        onOpen={onOpen}
+      />,
+    );
+
+    act(() => {
+      controller.emit({
+        type: 'confirmation_required',
+        callId: 'call-compact-correction',
+        toolName: 'add_household_member',
+        message: 'Review the household member.',
+        draft: {
+          title: 'Add household member',
+          fields: [{ label: 'First name', value: 'Emma' }],
+        },
+      });
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Need correction' }));
+    act(() => {
+      controller.emit({
+        type: 'revision_requested',
+        callId: 'call-compact-correction',
+        toolName: 'add_household_member',
+        correction: 'The user requested a correction.',
+      });
+    });
+
+    expect(onOpen).toHaveBeenCalledOnce();
+    window.matchMedia = originalMatchMedia;
+  });
+
+  it('keeps the draft open when a correction loses a race with an already-started apply', () => {
+    const controller = makeController();
+    controller.requestRevision.mockReturnValue(false);
+    render(
+      <AgentCompanion
+        capabilities={[]}
+        assistantController={controller as unknown as AssistantController}
+        assistantEnabled
+        isOpen
+        onClose={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+
+    act(() => {
+      controller.emit({
+        type: 'confirmation_required',
+        callId: 'call-race',
+        toolName: 'add_income_source',
+        message: 'A change is ready for confirmation.',
+        draft: {
+          title: 'Add income source',
+          fields: [{ label: 'Member', value: 'Maya Carter' }],
+        },
+      });
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Need correction' }));
+
+    expect(document.querySelector('.tool-confirmation-modal')).not.toBeNull();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'This change is already being applied',
+    );
+  });
+
+  it('uses Escape as safe cancellation and closes/focuses only after successful completion', async () => {
+    const controller = makeController();
+    const onClose = vi.fn();
+    const { rerender } = render(
+      <>
+        <h2 id="active-section-heading" tabIndex={-1}>
+          Income
+        </h2>
+        <AgentCompanion
+          capabilities={[]}
+          assistantController={controller as unknown as AssistantController}
+          assistantEnabled
+          isOpen
+          onClose={onClose}
+          onOpen={() => {}}
+        />
+      </>,
+    );
+
+    act(() => {
+      controller.emit({
+        type: 'confirmation_required',
+        callId: 'call-modal-2',
+        toolName: 'set_current_coverage',
+        message: 'A coverage change is ready for confirmation.',
+        draft: {
+          title: 'Set current coverage',
+          fields: [{ label: 'Members', value: 'Maya Carter' }],
+        },
+      });
+    });
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(controller.cancelToolCall).toHaveBeenCalledWith('call-modal-2');
+    expect(document.querySelector('.tool-confirmation-modal')).toBeNull();
+
+    act(() => {
+      controller.emit({
+        type: 'confirmation_required',
+        callId: 'call-modal-3',
+        toolName: 'set_current_coverage',
+        message: 'A coverage change is ready for confirmation.',
+        draft: {
+          title: 'Set current coverage',
+          fields: [{ label: 'Members', value: 'Maya Carter' }],
+        },
+      });
+      controller.emit({
+        type: 'failed',
+        callId: 'call-modal-3',
+        toolName: 'set_current_coverage',
+        message: 'Coverage could not be updated.',
+      });
+    });
+    expect(
+      document.querySelector('.tool-confirmation-modal'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Coverage could not be updated.',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Confirm and apply' }),
+    ).toBeDisabled();
+    expect(onClose).not.toHaveBeenCalled();
+
+    act(() => {
+      controller.emit({
+        type: 'succeeded',
+        callId: 'call-modal-4',
+        toolName: 'set_current_coverage',
+        summary: 'Updated coverage for Maya Carter.',
+      });
+    });
+    expect(onClose).not.toHaveBeenCalled();
+
+    act(() => {
+      controller.emit({
+        type: 'confirmation_required',
+        callId: 'call-modal-4',
+        toolName: 'set_current_coverage',
+        message: 'A coverage change is ready for confirmation.',
+        draft: {
+          title: 'Set current coverage',
+          fields: [{ label: 'Members', value: 'Maya Carter' }],
+        },
+      });
+      controller.emit({
+        type: 'succeeded',
+        callId: 'call-modal-4',
+        toolName: 'set_current_coverage',
+        summary: 'Updated coverage for Maya Carter.',
+      });
+    });
+    expect(document.querySelector('.tool-confirmation-modal')).toBeNull();
+    expect(onClose).toHaveBeenCalledOnce();
+
+    rerender(
+      <>
+        <h2 id="active-section-heading" tabIndex={-1}>
+          Income
+        </h2>
+        <AgentCompanion
+          capabilities={[]}
+          assistantController={controller as unknown as AssistantController}
+          assistantEnabled
+          isOpen={false}
+          onClose={onClose}
+          onOpen={() => {}}
+        />
+      </>,
+    );
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Income' })).toHaveFocus();
+    });
+  });
+
+  it('routes a failure to the visible companion panel when the desktop panel is hidden', () => {
+    const controller = makeController();
+    render(
+      <AgentCompanion
+        capabilities={[]}
+        assistantController={controller as unknown as AssistantController}
+        assistantEnabled
+        isOpen
+        onClose={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+
+    const panels = Array.from(
+      document.querySelectorAll<HTMLElement>('.assistant-panel'),
+    );
+    expect(panels).toHaveLength(2);
+    panels[0]!.style.display = 'none';
+
+    act(() => {
+      controller.emit({
+        type: 'failed',
+        callId: 'call-visible-failure',
+        toolName: 'set_current_coverage',
+        message: 'Coverage could not be updated.',
+      });
+    });
+
+    expect(
+      within(panels[1]!).getByText(
+        /I couldn't apply that change: Coverage could not be updated\./,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('keeps confirmation controls inert while applying and allows the terminal lifecycle to finish', () => {
+    const controller = makeController();
+    const onClose = vi.fn();
+    render(
+      <AgentCompanion
+        capabilities={[]}
+        assistantController={controller as unknown as AssistantController}
+        assistantEnabled
+        isOpen
+        onClose={onClose}
+        onOpen={() => {}}
+      />,
+    );
+
+    act(() => {
+      controller.emit({
+        type: 'confirmation_required',
+        callId: 'call-applying',
+        toolName: 'set_current_coverage',
+        message: 'A coverage change is ready for confirmation.',
+        draft: {
+          title: 'Set current coverage',
+          fields: [{ label: 'Members', value: 'Maya Carter' }],
+        },
+      });
+      controller.emit({
+        type: 'applying',
+        callId: 'call-applying',
+        toolName: 'set_current_coverage',
+      });
+    });
+
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(controller.cancelToolCall).not.toHaveBeenCalled();
+    expect(
+      document.querySelector('.tool-confirmation-modal'),
+    ).toBeInTheDocument();
+
+    act(() => {
+      controller.emit({
+        type: 'succeeded',
+        callId: 'call-applying',
+        toolName: 'set_current_coverage',
+        summary: 'Updated coverage for Maya Carter.',
+      });
+    });
+    expect(document.querySelector('.tool-confirmation-modal')).toBeNull();
+    expect(onClose).toHaveBeenCalledOnce();
   });
 });

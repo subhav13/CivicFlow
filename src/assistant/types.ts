@@ -1,4 +1,5 @@
 import type { RegisteredToolRef } from '../webmcp/model-context-port';
+import type { ConfirmationDraft } from './tool-confirmation-view-model';
 
 export interface CurrentToolSurface {
   snapshot(signal?: AbortSignal): Promise<RegisteredToolRef[]>;
@@ -30,6 +31,7 @@ export type ToolBridgeResponse =
       callId: string;
       toolName: string;
       message: string;
+      draft: ConfirmationDraft;
     }
   | {
       kind: 'invalid_arguments';

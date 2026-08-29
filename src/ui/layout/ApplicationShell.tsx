@@ -7,7 +7,7 @@ import type {
 } from '../../application/store';
 import type { OperationState } from '../../application/operation-feedback';
 import { AgentCompanion } from '../agent-companion/AgentCompanion';
-import type { SpeechOutputService } from '../agent-companion/AssistantPanel';
+import type { SpeechOutputService } from '../agent-companion/speech-output';
 import type { AssistantController } from '../../assistant/assistant-controller';
 import { SECTION_META } from './section-meta';
 import { SectionStepper } from '../navigation/SectionStepper';

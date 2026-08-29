@@ -29,6 +29,7 @@ class FakeAssistantController {
   readonly stopMicrophone = vi.fn();
   readonly sendText = vi.fn();
   readonly confirmToolCall = vi.fn(async () => {});
+  readonly requestRevision = vi.fn(() => true);
   readonly cancelToolCall = vi.fn();
   readonly dispose = vi.fn();
   getState(): SessionState {
@@ -178,6 +179,15 @@ describe('Phase 4 unified assistant panel', () => {
         callId: 'call-income-1',
         toolName: 'add_income_source',
         message: 'Confirm adding Acme Dental income.',
+        draft: {
+          title: 'Add income source',
+          fields: [
+            { label: 'Member', value: 'Maya Carter' },
+            { label: 'Employer or source', value: 'Acme Dental' },
+            { label: 'Amount', value: '$1,250.00' },
+            { label: 'Frequency', value: 'Monthly' },
+          ],
+        },
       });
     });
 
@@ -186,9 +196,85 @@ describe('Phase 4 unified assistant panel', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent(/confirm/i);
     expect(controller.confirmToolCall).not.toHaveBeenCalled();
+    expect(
+      screen.getByText(
+        /I have prepared these details for review.*Member: Maya Carter.*Amount: \$1,250\.00.*Is everything correct, or do you need changes\?/i,
+      ),
+    ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm and apply' }));
     expect(controller.confirmToolCall).toHaveBeenCalledWith('call-income-1');
+  });
+
+  it('commits the user transcript before adding a local confirmation fallback', () => {
+    const controller = renderPanel();
+
+    act(() => {
+      controller.emit({
+        type: 'transcript',
+        speaker: 'user',
+        text: 'Everything looks correct',
+        final: true,
+      });
+      controller.emit({
+        type: 'confirmation_required',
+        callId: 'call-order-1',
+        toolName: 'add_income_source',
+        message: 'A change is ready for confirmation.',
+        draft: {
+          title: 'Add income source',
+          fields: [{ label: 'Employer or source', value: 'Acme Health' }],
+        },
+      });
+      controller.emit({ type: 'turn_complete' });
+    });
+
+    const entries = Array.from(screen.getByRole('log').querySelectorAll('li'));
+    expect(entries.map((entry) => entry.textContent)).toEqual([
+      expect.stringContaining('Everything looks correct'),
+      expect.stringContaining('I have prepared these details for review.'),
+    ]);
+    expect(entries[0]).not.toHaveTextContent('Listening...');
+  });
+
+  it('does not duplicate a committed Gemini confirmation summary with the local fallback', () => {
+    const controller = renderPanel();
+
+    act(() => {
+      controller.emit({
+        type: 'transcript',
+        speaker: 'user',
+        text: 'Add these details',
+        final: true,
+      });
+      controller.emit({
+        type: 'text',
+        text: 'I reviewed every field. The draft is ready for review.',
+      });
+      controller.emit({
+        type: 'confirmation_required',
+        callId: 'call-summary-1',
+        toolName: 'add_income_source',
+        message: 'A change is ready for confirmation.',
+        draft: {
+          title: 'Add income source',
+          fields: [{ label: 'Employer or source', value: 'Acme Health' }],
+        },
+      });
+      controller.emit({ type: 'turn_complete' });
+    });
+
+    expect(
+      screen.getAllByText(
+        'I reviewed every field. The draft is ready for review.',
+      ),
+    ).toHaveLength(1);
+    expect(
+      screen.queryByText(/I have prepared these details for review/i),
+    ).not.toBeInTheDocument();
+    const entries = Array.from(screen.getByRole('log').querySelectorAll('li'));
+    expect(entries[0]).toHaveTextContent('Add these details');
+    expect(entries[1]).toHaveTextContent('I reviewed every field');
   });
 
   it('cancels a pending mutation without exposing raw arguments or submission controls', () => {
@@ -200,6 +286,10 @@ describe('Phase 4 unified assistant panel', () => {
         callId: 'call-1',
         toolName: 'set_current_coverage',
         message: 'Confirm updating current coverage.',
+        draft: {
+          title: 'Set current coverage',
+          fields: [{ label: 'Members', value: 'Maya Carter' }],
+        },
       });
     });
 
@@ -207,6 +297,49 @@ describe('Phase 4 unified assistant panel', () => {
 
     expect(controller.cancelToolCall).toHaveBeenCalledWith('call-1');
     expect(screen.queryByRole('button', { name: /submit|attest/i })).toBeNull();
+  });
+
+  it('shows a visible correction prompt after a draft revision is accepted', () => {
+    const controller = renderPanel();
+
+    act(() => {
+      controller.emit({
+        type: 'revision_requested',
+        callId: 'call-revision-1',
+        toolName: 'add_income_source',
+        correction: 'The user requested a correction.',
+      });
+    });
+
+    expect(
+      screen.getByText(
+        'Tell me what needs to change. I will show the updated draft for review before anything is applied.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('keeps the inline draft visible when the controller rejects a late correction request', () => {
+    const controller = renderPanel();
+    controller.requestRevision.mockReturnValue(false);
+
+    act(() => {
+      controller.emit({
+        type: 'confirmation_required',
+        callId: 'call-late-correction',
+        toolName: 'add_income_source',
+        message: 'Confirm adding Acme Health income.',
+        draft: {
+          title: 'Add income source',
+          fields: [{ label: 'Employer or source', value: 'Acme Health' }],
+        },
+      });
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Need correction' }));
+
+    expect(
+      screen.getByText('Confirm adding Acme Health income.'),
+    ).toBeInTheDocument();
   });
 
   it('reads only the supplied visible section text without sending it as a model message', () => {
@@ -285,6 +418,15 @@ describe('Phase 4 unified assistant panel', () => {
         callId: 'call-income-99',
         toolName: 'add_income_source',
         message: 'Confirm adding Acme income.',
+        draft: {
+          title: 'Add income source',
+          fields: [
+            { label: 'Member', value: 'Maya Carter' },
+            { label: 'Employer or source', value: 'Acme Health' },
+            { label: 'Amount', value: '$1,250.00' },
+            { label: 'Frequency', value: 'Monthly' },
+          ],
+        },
       });
     });
 
@@ -295,7 +437,9 @@ describe('Phase 4 unified assistant panel', () => {
     );
 
     expect(screen.getByText('Confirm adding Acme income.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Confirm' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Confirm and apply' }),
+    ).toBeInTheDocument();
   });
 
   it('uses optional speech output for responses, repeat, and slower playback', () => {
@@ -402,10 +546,44 @@ describe('Phase 4 unified assistant panel', () => {
         callId: 'call-income-1',
         toolName: 'add_income_source',
         message: 'Confirm adding Acme Dental income.',
+        draft: {
+          title: 'Add income source',
+          fields: [
+            { label: 'Member', value: 'Maya Carter' },
+            { label: 'Employer or source', value: 'Acme Dental' },
+            { label: 'Amount', value: '$1,250.00' },
+            { label: 'Frequency', value: 'Monthly' },
+          ],
+        },
       });
     });
 
     expect(screen.getByRole('status')).toHaveTextContent(/confirm/i);
+  });
+
+  it('does not duplicate the local success summary when Gemini continues the turn', () => {
+    const controller = new FakeAssistantController();
+    renderPanel(controller);
+
+    act(() => {
+      controller.emit({
+        type: 'succeeded',
+        callId: 'call-success',
+        toolName: 'set_current_coverage',
+        summary: 'Coverage was updated.',
+      });
+      controller.emit({
+        type: 'text',
+        text: 'Coverage was updated. What would you like to do next?',
+      });
+      controller.emit({ type: 'turn_complete' });
+    });
+
+    expect(
+      screen.getAllByText(
+        'Coverage was updated. What would you like to do next?',
+      ),
+    ).toHaveLength(1);
   });
 
   it('preserves error and unavailable status behavior when active operation is applying', () => {
@@ -505,7 +683,7 @@ describe('Phase 4 unified assistant panel', () => {
     });
   });
 
-  it('stops microphone capture when disabled and when the panel unmounts', async () => {
+  it('stops microphone capture when disabled but not when the presentation panel unmounts', async () => {
     const controller = new FakeAssistantController();
     const { rerender, unmount } = render(
       <AssistantPanel
@@ -526,8 +704,9 @@ describe('Phase 4 unified assistant panel', () => {
     );
     expect(controller.stopMicrophone).toHaveBeenCalled();
 
+    controller.stopMicrophone.mockClear();
     unmount();
-    expect(controller.stopMicrophone).toHaveBeenCalled();
+    expect(controller.stopMicrophone).not.toHaveBeenCalled();
   });
 
   it('keeps a text-only fallback when the secure session is unavailable', () => {
