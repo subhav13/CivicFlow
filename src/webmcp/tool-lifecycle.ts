@@ -33,6 +33,31 @@ export interface MutationOutcome {
  */
 export type MutationCallback = () => Promise<MutationOutcome>;
 
+async function waitForPresentationBoundary(): Promise<void> {
+  if (
+    typeof window !== 'undefined' &&
+    typeof window.requestAnimationFrame === 'function'
+  ) {
+    await new Promise<void>((resolve) => {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          resolve();
+        });
+      });
+    });
+  } else if (typeof requestAnimationFrame === 'function') {
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          resolve();
+        });
+      });
+    });
+  } else {
+    await Promise.resolve();
+  }
+}
+
 /**
  * Runs a WebMCP mutation lifecycle around an existing handler callback.
  *
@@ -40,12 +65,13 @@ export type MutationCallback = () => Promise<MutationOutcome>;
  * 1. Rejects immediately (publishes failed) if signal is already aborted.
  * 2. Calls store.beginOperation → store.advanceOperation so 'applying' is
  *    observable before the callback runs.
- * 3. Invokes the callback (which owns validation, dispatch, result, selection).
- * 4. On success outcome: publishes completeOperation.
- * 5. On failure outcome: publishes failOperation.
- * 6. On throw or abort: publishes failOperation for the current action if it
+ * 3. Awaits a real presentation boundary (requestAnimationFrame or microtask).
+ * 4. Invokes the callback (which owns validation, dispatch, result, selection).
+ * 5. On success outcome: publishes completeOperation.
+ * 6. On failure outcome: publishes failOperation.
+ * 7. On throw or abort: publishes failOperation for the current action if it
  *    is still current, then rethrows.
- * 7. Stale fencing: store coordinator methods are no-ops when a newer action
+ * 8. Stale fencing: store coordinator methods are no-ops when a newer action
  *    has replaced the current one (action-ID mismatch ignored by reduceOperation).
  *
  * Returns the serialized result string from the callback unchanged.
@@ -74,6 +100,13 @@ export async function runWebMcpMutation(
   store.beginOperation(descriptor);
   store.advanceOperation(actionId);
 
+  await waitForPresentationBoundary();
+
+  // Guard: aborted during presentation boundary wait
+  if (signal?.aborted) {
+    store.failOperation(actionId, { completedAt: new Date().toISOString() });
+    throw new DOMException('Mutation aborted before start', 'AbortError');
+  }
   let outcome: MutationOutcome;
   try {
     outcome = await callback();

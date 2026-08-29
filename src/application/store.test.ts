@@ -988,4 +988,138 @@ describe('CivicFlow application store', () => {
       expect(store.getState().ui.recentEffect?.actionId).toBe('act-update');
     });
   });
+
+  it('hydrates sanitized same-tab activity and clears it on reset', () => {
+    sessionStorage.clear();
+    sessionStorage.setItem(
+      'civicflow.activity.v1',
+      JSON.stringify([
+        {
+          id: 'retained-action',
+          summary: 'Added a synthetic household member',
+          source: 'webmcp',
+          status: 'succeeded',
+          section: 'household',
+          occurredAt: fixedNow().toISOString(),
+          beforeRevision: 0,
+          afterRevision: 1,
+          affectedEntities: [
+            {
+              kind: 'household_member',
+              id: 'person-retained',
+              label: 'Synthetic member',
+            },
+          ],
+        },
+      ]),
+    );
+
+    const { store } = createTestStore();
+    expect(store.getState().ui.activity).toHaveLength(1);
+    expect(store.getState().ui.activity[0]).toMatchObject({
+      id: 'retained-action',
+      status: 'succeeded',
+    });
+
+    store.reset((state, context) => resetDemo(state, context));
+
+    expect(store.getState().ui.activity).toHaveLength(0);
+    expect(sessionStorage.getItem('civicflow.activity.v1')).toBeNull();
+  });
+
+  it('persists only the allowlisted activity fields in same-tab storage', () => {
+    sessionStorage.clear();
+    const { store } = createTestStore();
+    const unsafeEntry = {
+      id: 'sanitized-action',
+      summary: 'Updated synthetic household data',
+      source: 'webmcp',
+      status: 'succeeded',
+      section: 'household',
+      occurredAt: fixedNow().toISOString(),
+      beforeRevision: 0,
+      afterRevision: 1,
+      affectedEntities: [],
+      rawArguments: { firstName: 'Maya', ageYears: 27 },
+      transcript: 'private transcript must not persist',
+      audio: 'base64 audio must not persist',
+      fullApplicationState: { applicant: { firstName: 'Maya' } },
+      secret: 'not-a-secret',
+    } as unknown as ActivityEntry;
+
+    store.appendActivity(unsafeEntry);
+
+    const serialized = sessionStorage.getItem('civicflow.activity.v1');
+    expect(serialized).toContain('sanitized-action');
+    expect(serialized).not.toContain('rawArguments');
+    expect(serialized).not.toContain('transcript');
+    expect(serialized).not.toContain('audio');
+    expect(serialized).not.toContain('fullApplicationState');
+    expect(serialized).not.toContain('not-a-secret');
+  });
+
+  it('preserves all eight ChangedEntityKind kinds through the retention sanitizer allowlist', () => {
+    sessionStorage.clear();
+    const { store } = createTestStore();
+
+    const allKinds: ChangedEntitySummary[] = [
+      { kind: 'application', id: 'app-1', label: 'Application' },
+      { kind: 'applicant', id: 'person-maya', label: 'Maya Carter' },
+      { kind: 'household_member', id: 'person-emma', label: 'Emma Carter' },
+      { kind: 'income_source', id: 'inc-1', label: 'Acme Dental' },
+      { kind: 'coverage_record', id: 'cov-1', label: 'Health Plan' },
+      { kind: 'document', id: 'doc-1', label: 'Paystub' },
+      { kind: 'attestation', id: 'attest-1', label: 'Attestation' },
+      { kind: 'submission', id: 'sub-1', label: 'Submission' },
+    ];
+
+    store.appendActivity({
+      id: 'all-kinds-action',
+      summary: 'Action with all entity kinds',
+      source: 'webmcp',
+      status: 'succeeded',
+      section: 'household',
+      occurredAt: fixedNow().toISOString(),
+      beforeRevision: 0,
+      afterRevision: 1,
+      affectedEntities: allKinds,
+    });
+
+    const serialized = sessionStorage.getItem('civicflow.activity.v1');
+    expect(serialized).not.toBeNull();
+    const parsed = JSON.parse(serialized!);
+    expect(parsed[0].affectedEntities).toHaveLength(8);
+    const retainedKinds = parsed[0].affectedEntities.map(
+      (e: ChangedEntitySummary) => e.kind,
+    );
+    expect(retainedKinds).toEqual([
+      'application',
+      'applicant',
+      'household_member',
+      'income_source',
+      'coverage_record',
+      'document',
+      'attestation',
+      'submission',
+    ]);
+  });
+
+  it('does not fall back to global session storage when retention is explicitly disabled', () => {
+    sessionStorage.clear();
+    const storage = new FakeStorage();
+    const store = createCivicFlowStore({
+      storage,
+      sessionStorage: null,
+      now: fixedNow,
+      newId: () => 'disabled-storage-id',
+    });
+
+    store.appendActivity({
+      id: 'disabled-retention',
+      summary: 'Activity should remain in memory only',
+    });
+
+    expect(store.getState().ui.activity).toHaveLength(1);
+    expect(sessionStorage.getItem('civicflow.activity.v1')).toBeNull();
+  });
 });

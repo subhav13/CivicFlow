@@ -8,7 +8,7 @@
 - **Parent dependency:** accepted core application/WebMCP baseline; formal parent Gate D evidence remains independently tracked
 - **Pre-planning baseline:** branch `main`, clean commit `801a165ff8f115d6a4801b1f33d087508104ec04`
 - **Release cut:** selected local hackathon cut accepted after CR-02 through CR-06 closed and independent reverification; CR-01 and CR-07 remain documented non-blocking limitations
-- **Voice dependency:** none
+- **Voice dependency:** none for the selected collaboration cut; optional Gemini Live work is tracked separately in [CivicFlow Gemini Live companion v1](../../civicflow-gemini-companion-v1/MASTER.md)
 
 ## Phase routing
 
@@ -50,7 +50,9 @@ gate without returning ownership.
 - Finish and review each packet before the next dependent packet.
 - Do not run simultaneous writers on store, App, styles, catalog/results, or shared fixtures.
 - The original nine tools remain green throughout. Phase 3 additively changes the accepted catalog to ten only after its RED contract is intentionally updated and independently reviewed.
-- Voice is not an entry or exit condition for any phase.
+- Voice is not an entry or exit condition for any collaboration phase. The
+  optional Gemini companion has its own child ledger, provider/security/live
+  gates, and separate implementation prompts.
 - No remote mutation follows from a local phase gate.
 
 ## Current execution checkpoint

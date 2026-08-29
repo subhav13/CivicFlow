@@ -7,6 +7,8 @@ import type {
 } from '../../application/store';
 import type { OperationState } from '../../application/operation-feedback';
 import { AgentCompanion } from '../agent-companion/AgentCompanion';
+import type { SpeechOutputService } from '../agent-companion/AssistantPanel';
+import type { AssistantController } from '../../assistant/assistant-controller';
 import { SECTION_META } from './section-meta';
 import { SectionStepper } from '../navigation/SectionStepper';
 import {
@@ -15,12 +17,16 @@ import {
 } from '../progress/progress-view-model';
 import { ApplicationProgressTracker } from '../progress/ApplicationProgressTracker';
 import { OperationStatus } from '../feedback/OperationStatus';
+import { AgentChangeToast } from '../feedback/AgentChangeToast';
 import { FirstRunGuide } from '../onboarding/FirstRunGuide';
-
 interface ApplicationShellProps {
   activeSection: SectionId;
   capabilities: readonly CapabilitySummary[];
   activity?: readonly ActivityEntry[];
+  assistantController?: AssistantController | null;
+  assistantEnabled?: boolean;
+  onReadCurrentSection?: () => string;
+  speechOutput?: SpeechOutputService;
   companionOpen: boolean;
   currentSection: ReactNode;
   onCloseCompanion: () => void;
@@ -38,6 +44,10 @@ export function ApplicationShell({
   activeSection,
   capabilities,
   activity,
+  assistantController,
+  assistantEnabled,
+  onReadCurrentSection,
+  speechOutput,
   companionOpen,
   currentSection,
   onCloseCompanion,
@@ -95,9 +105,17 @@ export function ApplicationShell({
         </span>
       </div>
 
-      <ApplicationProgressTracker viewModel={vm} />
+      <ApplicationProgressTracker
+        viewModel={vm}
+        activeOperation={activeOperation}
+      />
       <OperationStatus
         operation={activeOperation ?? null}
+        onDismiss={onDismissOperation}
+      />
+      <AgentChangeToast
+        operation={activeOperation}
+        activeSection={activeSection}
         onDismiss={onDismissOperation}
       />
       <FirstRunGuide
@@ -167,6 +185,11 @@ export function ApplicationShell({
         <AgentCompanion
           capabilities={capabilities}
           activity={activity}
+          assistantController={assistantController}
+          assistantEnabled={assistantEnabled}
+          onReadCurrentSection={onReadCurrentSection}
+          speechOutput={speechOutput}
+          activeOperation={activeOperation}
           isOpen={companionOpen}
           onClose={onCloseCompanion}
           onOpen={onOpenCompanion}

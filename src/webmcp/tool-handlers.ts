@@ -102,8 +102,19 @@ function validateToolInput<T>(
     const fieldErrors: Record<string, string> = {};
     if (validator.errors) {
       for (const err of validator.errors) {
-        const field = err.instancePath.replace(/^\//u, '') || 'input';
-        fieldErrors[field] = err.message || 'Invalid input parameter';
+        const params = err.params as Record<string, unknown> | undefined;
+        const field =
+          err.keyword === 'required' &&
+          typeof params?.missingProperty === 'string'
+            ? params.missingProperty
+            : err.keyword === 'additionalProperties' &&
+                typeof params?.additionalProperty === 'string'
+              ? params.additionalProperty
+              : err.instancePath.replace(/^\//u, '') || 'input';
+        const message = err.message || 'Invalid input parameter';
+        fieldErrors[field] = fieldErrors[field]
+          ? `${fieldErrors[field]}; ${message}`
+          : message;
       }
     }
     const fail = failureResult(

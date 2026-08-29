@@ -20,6 +20,9 @@ import { IncomeSection } from '../ui/sections/IncomeSection';
 import { ReviewSection } from '../ui/sections/ReviewSection';
 import { RecoveryBanner } from '../ui/feedback/RecoveryBanner';
 import { ApplicationShell } from '../ui/layout/ApplicationShell';
+import type { AssistantController } from '../assistant/assistant-controller';
+import { createAssistantRuntime } from '../assistant/assistant-runtime';
+import type { SpeechOutputService } from '../ui/agent-companion/AssistantPanel';
 import { useCivicFlowStore } from '../ui/use-civic-flow-store';
 import { useWebMcpRegistry } from '../webmcp';
 const REVIEW_FOCUS_TARGETS: Partial<Record<ReviewIssueCode, string>> = {
@@ -31,9 +34,49 @@ const REVIEW_FOCUS_TARGETS: Partial<Record<ReviewIssueCode, string>> = {
   ATTESTATION_REQUIRED: 'demo-attestation',
 };
 
-export function App() {
+export interface AppProps {
+  assistantController?: AssistantController | null;
+  assistantEnabled?: boolean;
+  onReadCurrentSection?: () => string;
+  speechOutput?: SpeechOutputService;
+}
+
+export function App({
+  assistantController = null,
+  assistantEnabled = false,
+  onReadCurrentSection,
+  speechOutput,
+}: AppProps = {}) {
   const { snapshot, store } = useCivicFlowStore();
-  useWebMcpRegistry(store);
+  const [runtime] = useState(() =>
+    assistantEnabled && assistantController === null
+      ? createAssistantRuntime({ store })
+      : null,
+  );
+  useWebMcpRegistry(store, runtime?.port, runtime?.registryManager);
+
+  const runtimeDisposeToken = useRef<{ cancelled: boolean } | null>(null);
+  useEffect(() => {
+    if (runtimeDisposeToken.current) {
+      runtimeDisposeToken.current.cancelled = true;
+    }
+    const token = { cancelled: false };
+    runtimeDisposeToken.current = token;
+
+    return () => {
+      // React StrictMode replays effects during development. Defer disposal
+      // until the replay has a chance to re-run this effect and cancel it.
+      queueMicrotask(() => {
+        if (token.cancelled) return;
+        runtime?.dispose();
+        if (runtimeDisposeToken.current === token) {
+          runtimeDisposeToken.current = null;
+        }
+      });
+    };
+  }, [runtime]);
+
+  const activeController = assistantController ?? runtime?.controller ?? null;
   const progress = getApplicationProgress(snapshot.application);
   const reviewIssues = getReviewIssues(snapshot.application);
   const progressViewModel = getProgressViewModel(
@@ -258,11 +301,29 @@ export function App() {
     </>
   );
 
+  const handleReadCurrentSection = () => {
+    if (onReadCurrentSection) {
+      return onReadCurrentSection();
+    }
+    if (typeof document !== 'undefined') {
+      const mainEl = document.querySelector('.application-main');
+      if (mainEl && typeof (mainEl as HTMLElement).innerText === 'string') {
+        const text = (mainEl as HTMLElement).innerText.trim();
+        return text || 'No section content available.';
+      }
+    }
+    return 'No section content available.';
+  };
+
   return (
     <ApplicationShell
       activeSection={snapshot.ui.activeSection}
       capabilities={snapshot.ui.capabilities}
       activity={snapshot.ui.activity}
+      assistantController={activeController}
+      assistantEnabled={assistantEnabled}
+      onReadCurrentSection={handleReadCurrentSection}
+      speechOutput={speechOutput}
       companionOpen={companionOpen}
       guideOpen={!guideDismissed}
       onDismissGuide={() => setGuideDismissed(true)}

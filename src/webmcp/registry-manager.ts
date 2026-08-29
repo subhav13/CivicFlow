@@ -40,6 +40,7 @@ export class WebMcpRegistryManager {
   >();
   private unsubscribeStore: (() => void) | null = null;
   private refreshPromise: Promise<void> = Promise.resolve();
+  private startPromise: Promise<void> | null = null;
   private lastContextKey = '';
   private lastPublishedJson = '';
   private disposed = false;
@@ -52,6 +53,13 @@ export class WebMcpRegistryManager {
 
   async start(): Promise<void> {
     if (this.disposed) return;
+    if (this.startPromise) return this.startPromise;
+    this.startPromise = this.executeStart();
+    return this.startPromise;
+  }
+
+  private async executeStart(): Promise<void> {
+    if (this.disposed) return;
 
     if (!this.port.isAvailable()) {
       this.store.setCapabilities([]);
@@ -62,7 +70,6 @@ export class WebMcpRegistryManager {
     const currentGen = this.generation;
 
     try {
-      // Register static tools
       this.staticAbortController = new AbortController();
       const staticSignal = this.staticAbortController.signal;
 
@@ -254,6 +261,11 @@ export class WebMcpRegistryManager {
   }
 
   async waitForSync(): Promise<void> {
+    if (!this.startPromise && !this.disposed) {
+      await this.start();
+    } else if (this.startPromise) {
+      await this.startPromise;
+    }
     await this.refreshPromise;
   }
 
@@ -261,6 +273,7 @@ export class WebMcpRegistryManager {
     if (this.disposed) return;
     this.disposed = true;
     this.generation += 1;
+    this.startPromise = null;
 
     if (this.unsubscribeStore) {
       this.unsubscribeStore();

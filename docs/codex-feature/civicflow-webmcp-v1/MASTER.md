@@ -4,10 +4,10 @@
 
 - **Feature:** CivicFlow, a WebMCP-native public-benefits application workspace
 - **Version:** v1
-- **Overall status:** `in-progress` — Phases 0, 1, and 2 are validated; Phase 3 is in progress; Phases 4–5 are planned
+- **Overall status:** `in-progress` — core Phases 0–2 are validated, Phase 3 has partial supported live evidence but its formal E1–E8 gate remains open, the selected collaboration UX cut is locally accepted, and the optional Gemini companion's Phases 0–2 documentation/source, feedback-retention, and provider-neutral bridge gates are validated while later child phases remain planned
 - **Ledger owner:** the coordinating Codex task, with independent review by a Sol route
 - **Phase 1 Site owner:** one native `luna_max` task is the sole source and local-preview owner
-- **Last updated:** 2026-08-27
+- **Last updated:** 2026-08-28
 - **Implementation repository:** `/Users/SubhavMathur/Desktop/Subhav Main/AI Projects/CivicFlow`
 - **Planning baseline:** [CIVICFLOW_IMPLEMENTATION_PLAN.md](/Users/SubhavMathur/.codex/.chatgpt-projects/g-p-6a8f4e433074819184bcac6f1ff0e3d3/CIVICFLOW_IMPLEMENTATION_PLAN.md)
 
@@ -15,9 +15,9 @@ This ledger is the working source of truth for implementation, review, and relea
 
 ## Purpose and problem
 
-CivicFlow is a fictional Massachusetts public-benefits and health-coverage application workspace built with synthetic data. The demo must show that a person can use the normal portal, ChatGPT Site Tools, and an optional embedded voice companion against the same visible application state. The current repository has the accepted Phase 0 foundation but only a shell UI. The remaining work is to add the human portal, WebMCP capability surface, deterministic integration evidence, optional voice, and release packaging without breaking the three product invariants.
-
-The product is deliberately not a government service, eligibility engine, enrollment system, or general voice SDK. The most important user-visible safety behavior is that an agent can help prepare and review the demo but cannot submit it. A human must attest and click **Submit Demo**.
+The repository now contains the accepted human portal, WebMCP capability
+layer, collaboration UX improvements, document-readiness surface, Sites
+packaging, and a public demo. The optional [Gemini Live companion ledger](../civicflow-gemini-companion-v1/MASTER.md) plans a removable text/voice assistant over the same WebMCP surface; it is not yet implemented or live-validated. The product is deliberately not a government service, eligibility engine, enrollment system, or general voice SDK. The most important user-visible safety behavior is that an agent can help prepare and review the demo but cannot submit it. A human must attest and click **Submit Demo**.
 
 ## Source inventory and evidence
 
@@ -49,8 +49,8 @@ It shows a research-demo disclosure, a deterministic progress header, normal key
 
 ### Priority boundary
 
-- **P0:** human portal, central state/commands, all nine WebMCP capabilities, dynamic contextual registration, deterministic tests, live Site Tools evidence, public repository and release package.
-- **P1:** optional OpenAI Realtime voice over WebRTC using the current WebMCP surface; P0 must remain shippable without it.
+- **P0:** human portal, central state/commands, the original nine WebMCP capabilities plus the accepted additive read-only `get_next_actions` tool, dynamic contextual registration, deterministic tests, live Site Tools evidence, public repository and release package.
+- **P1:** optional Gemini Live text/voice companion using the current WebMCP surface; the earlier OpenAI Realtime/WebRTC plan is preserved as superseded history; P0 must remain shippable without it.
 - **P2:** only after P0 and P1 are green: optional undo, adversarial showcase polish, accessibility refinement, and other explicitly approved enhancements.
 
 ### Explicit non-goals
@@ -87,8 +87,8 @@ Dependencies point inward: domain contracts and pure selectors are below applica
 | `src/application/persistence`    | Versioned localStorage hydration/save/fallback                                            | Network storage or UI state                        |
 | `src/ui`                         | Forms, cards, navigation, review, capability/activity presentation                        | Direct state mutation or provider calls            |
 | `src/webmcp`                     | Browser adapter, fake, catalog, handlers, registry lifecycle                              | Duplicated command semantics                       |
-| `src/voice`                      | Current-tool mapping and Realtime/media lifecycle                                         | Application command imports or alternate mutations |
-| `server` or Sites Worker adapter | Optional same-origin SDP broker with fixed server-owned config                            | Application data persistence                       |
+| `src/assistant`                  | Current-tool mapping, Gemini Live/session lifecycle, and provider adapter                 | Application command imports or alternate mutations |
+| `server` or Sites Worker adapter | Optional secure Gemini session/credential boundary with fixed server-owned config         | Application data persistence                       |
 
 The current repository keeps the accepted Phase 0 domain contract in `src/domain/index.ts`; future packets may split files only with explicit ownership and unchanged exports. `App.tsx` remains orchestration-only.
 
@@ -110,11 +110,15 @@ Commands include applicant updates, household confirmation and member add/update
 
 ### WebMCP tool surface
 
-The exact nine names are:
+The original nine baseline names are:
 
 `get_application_progress`, `navigate_to_section`, `add_household_member`, `update_household_member`, `add_income_source`, `update_income_source`, `set_current_coverage`, `list_uploaded_documents`, and `review_application`.
 
-These nine names remain the accepted P0 baseline. The separately planned [CivicFlow visible collaboration UX ledger](../civicflow-collaboration-ux-v1/MASTER.md) may add one read-only `get_next_actions` capability after its own contract gate. That additive enhancement must not rename or weaken the nine baseline capabilities, expose submission, or be claimed as implemented before its independent acceptance.
+These nine names remain the accepted P0 baseline. The [CivicFlow visible
+collaboration UX ledger](../civicflow-collaboration-ux-v1/MASTER.md) has
+independently accepted one additive read-only `get_next_actions` capability;
+the current catalog therefore has ten tools. The additive tool must not rename
+or weaken the nine baseline capabilities or expose submission.
 
 The first, navigation, add, coverage, and document tools are static. Household and income updates are contextual to a current selection. Review is available only while Review & Sign is active. Read-only annotations are applied to progress and document listing; document listing also marks user-controlled document text as untrusted. Every input is a closed runtime-validated object, outputs are compact JSON strings capped at 1,500 characters, and no tool name contains `submit`.
 
@@ -122,22 +126,41 @@ Only `BrowserModelContextPort` may touch `document.modelContext`. The registry m
 
 ### Optional voice contract
 
-The provider-neutral `CurrentToolSurface` snapshots and executes current WebMCP tools. A Realtime bridge maps those exact definitions to function tools, parses arguments once, executes serially through WebMCP, returns the unchanged tool result, refreshes on `toolchange`, and never adds a submission function. A same-origin SDP broker is disabled by default and, if later authorized, owns model/voice/instruction configuration, secret protection, origin/method/content-type/body checks, rate limiting, spend control, safe errors, and log redaction. Microphone access starts only after an explicit click and all tracks stop on teardown, page hide, disconnect, or fatal error. Voice can be removed without affecting P0.
+The earlier OpenAI Realtime/WebRTC and same-origin SDP design remains in
+[the historical parent voice phase](phases/05-optional-voice.md) as
+superseded planning history. New runtime work is owned by the [Gemini Live
+companion ledger](../civicflow-gemini-companion-v1/MASTER.md). Its provider-neutral
+`CurrentToolSurface` snapshots and executes current WebMCP tools; a Gemini
+bridge maps those exact definitions to function tools, parses arguments once,
+executes serially through WebMCP, returns the unchanged tool result, refreshes
+on registration changes, and never adds a submission function. The credential
+boundary is disabled by default and must be selected from current official
+Google documentation and actual Sites hosting capability. Microphone access
+starts only after an explicit click and all tracks stop on teardown, page hide,
+disconnect, or fatal error. The companion can be removed without affecting P0.
 
 ## Phase map and ownership
 
-| Plan phase                                | Ledger document                                                                       | Status        | Dependency            | Gate                                   |
-| ----------------------------------------- | ------------------------------------------------------------------------------------- | ------------- | --------------------- | -------------------------------------- |
-| Phase 0 — foundation                      | [01-foundation.md](phases/01-foundation.md)                                           | `validated`   | approved scope        | Gate A: domain/application evidence    |
-| Phase 1 — human portal                    | [02-human-portal.md](phases/02-human-portal.md)                                       | `validated`   | Phase 0               | Gate B: keyboard-completable portal    |
-| Phase 2 — WebMCP capability layer         | [03-webmcp-capability-layer.md](phases/03-webmcp-capability-layer.md)                 | `validated`   | Phase 1               | Gate C: fake-port deterministic tools  |
-| Phase 3 — integration and live Site Tools | [04-integration-and-live-site-tools.md](phases/04-integration-and-live-site-tools.md) | `in-progress` | Phase 2               | Gate D: supported-route live evidence  |
-| Phase 4 — optional voice                  | [05-optional-voice.md](phases/05-optional-voice.md)                                   | `planned`     | Gate D                | Gate E: secure authorized voice or cut |
-| Phase 5 — polish and release              | [06-polish-release-submission.md](phases/06-polish-release-submission.md)             | `planned`     | P0 and voice decision | Gate F: public release package         |
+| Plan phase                                | Ledger document                                                                                                               | Status        | Dependency                            | Gate                                               |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------- | ------------------------------------- | -------------------------------------------------- |
+| Phase 0 — foundation                      | [01-foundation.md](phases/01-foundation.md)                                                                                   | `validated`   | approved scope                        | Gate A: domain/application evidence                |
+| Phase 1 — human portal                    | [02-human-portal.md](phases/02-human-portal.md)                                                                               | `validated`   | Phase 0                               | Gate B: keyboard-completable portal                |
+| Phase 2 — WebMCP capability layer         | [03-webmcp-capability-layer.md](phases/03-webmcp-capability-layer.md)                                                         | `validated`   | Phase 1                               | Gate C: fake-port deterministic tools              |
+| Phase 3 — integration and live Site Tools | [04-integration-and-live-site-tools.md](phases/04-integration-and-live-site-tools.md)                                         | `in-progress` | Phase 2                               | Gate D: supported-route live evidence              |
+| Phase 4 — optional voice                  | [05-optional-voice.md](phases/05-optional-voice.md) and [Gemini companion ledger](../civicflow-gemini-companion-v1/MASTER.md) | `planned`     | Gate D and child Phases 0–2 validated | Gate E: secure authorized Gemini voice/text or cut |
+| Phase 5 — polish and release              | [06-polish-release-submission.md](phases/06-polish-release-submission.md)                                                     | `planned`     | P0 and voice decision                 | Gate F: public release package                     |
 
-### Companion enhancement ledger
+### Companion enhancement ledgers
 
-Post-P0 improvements for truthful operation feedback, stronger progress guidance, recoverable Site Tool failures, human-only undo, mobile navigation, onboarding, and document readiness are specified in [CivicFlow visible collaboration UX v1](../civicflow-collaboration-ux-v1/MASTER.md). The selected local hackathon path is Phases 1–3 plus companion Phase 5 and local 6.1–6.3. The 2026-08-28 MSW review admitted five judge-facing fixes in Packets M1–M2; those packets are now independently accepted through the OMP Gemini 3.7 Flash High route. CR-01 and CR-07 are documented non-blocking hackathon limitations. Companion Phase 4 undo remains explicitly deferred and live Packet 6.4 remains separately authorized. Parent Gate F must include the accepted collaboration-UX evidence before the final release claim. Optional voice remains independently includable or cut.
+Post-P0 improvements for truthful operation feedback, stronger progress guidance, recoverable Site Tool failures, human-only undo, mobile navigation, onboarding, and document readiness are specified in [CivicFlow visible collaboration UX v1](../civicflow-collaboration-ux-v1/MASTER.md). The selected local hackathon path is Phases 1–3 plus companion Phase 5 and local 6.1–6.3. The 2026-08-28 MSW review admitted five judge-facing fixes in Packets M1–M2; those packets are now independently accepted through the OMP Gemini 3.7 Flash High route. CR-01 and CR-07 are documented non-blocking hackathon limitations. Companion Phase 4 undo remains explicitly deferred and live Packet 6.4 remains separately authorized. Parent Gate F must include the accepted collaboration-UX evidence before the final release claim.
+
+The optional text/voice enhancement is now specified in [CivicFlow Gemini
+Live companion v1](../civicflow-gemini-companion-v1/MASTER.md). The user chose
+Gemini Live based on reported free-tier availability. This is a new runtime decision,
+not evidence that Gemini is already integrated. The child ledger's Phase 0
+documentation/source closure and separately authorized Phase 1
+feedback/retention gate are validated; later bridge, runtime, UI, live, and
+release packets require separate prompts and gates.
 
 Packets are dependency ordered and cannot be combined across a phase gate. One writer owns a packet at a time. Shared-contract changes return to the owning earlier packet.
 
@@ -147,6 +170,7 @@ Packets are dependency ordered and cannot be combined across a phase gate. One w
 - Phase 1's Sites path is a single native `luna_max` root task using `gpt-5.6-luna` at `max` reasoning. It is the sole Site checkout, source, configuration, and local-preview owner for Packets 1.1–1.5. It must not invoke OMP, Gemini, Cursor, Antigravity, or a source-editing subagent.
 - Later bounded implementation packets may use a native `luna_max` task only when separately dispatched with exact file and test allowlists. A Sol reviewer inspects actual state and evidence; worker completion prose never self-accepts a phase.
 - Live Site Tools evidence must use a currently supported validation route, such as Sol or Terra, because Luna is not assumed to be enabled for that validation.
+- The optional embedded assistant follows the child Gemini companion ledger. New runtime planning uses Gemini Live based on reported free-tier availability; the candidate model, transport, quota, data-use terms, and secure Sites session boundary must be verified from current official Google documentation before implementation. Child Phase 0 was documentation-only; child Phase 1 is limited to independently accepted local feedback/retention polish; child Phase 2 is limited to the independently accepted provider-neutral current-tool surface/function bridge. No Gemini runtime, credential, or external action is authorized by those gates.
 - Sites work uses the existing Vite capability path. Phase 1 is local-only: no initializer over the repository, remote Site creation, save, deploy, publish, hosted environment mutation, live API, secret access, commit, or push.
 - The original foundation preflight had no Git `HEAD`; the requested local Phase 1 commit provided the Phase 2 baseline `923efae8634ca311672e209065b6d2d3557fcedc` on `main`. Phase 2 is now committed and published; each future phase preflight must record the exact status and avoid claiming a clean checkout without checking it.
 
@@ -171,19 +195,19 @@ The non-negotiable automated cases include exact seed/progress and review rules,
 
 ## Full-feature acceptance criteria
 
-The feature is accepted only when a keyboard-only user can complete the six-section synthetic flow without WebMCP; the exact nine tools are discoverable and update the same visible state; contextual tools appear and disappear correctly; tool results and activity are compact and truthful; no agent-facing submission path exists; manual submission performs no network request; optional voice, if claimed, uses the current WebMCP surface and passes its security/cost/live gate; clean-install format, lint, secret, type, unit, contract, build, E2E, and accessibility gates pass; the public repository, URL, license, instructions, and video satisfy the current rules; and an independent reviewer accepts the final diff and evidence.
+The feature is accepted only when a keyboard-only user can complete the six-section synthetic flow without WebMCP; the original nine tools and the accepted additive read-only `get_next_actions` tool are discoverable and update or read the same visible state as specified; contextual tools appear and disappear correctly; tool results and activity are compact and truthful; no agent-facing submission path exists; manual submission performs no network request; optional voice, if claimed, uses the current WebMCP surface and passes its security/cost/live gate; clean-install format, lint, secret, type, unit, contract, build, E2E, and accessibility gates pass; the public repository, URL, license, instructions, and video satisfy the current rules; and an independent reviewer accepts the final diff and evidence.
 
 ## Open decisions and scheduled resolution
 
-| Decision                             | Default                                                                          | Resolve by                               |
-| ------------------------------------ | -------------------------------------------------------------------------------- | ---------------------------------------- |
-| Exact Sites/Vite integration changes | Add only the minimum supported integration if the existing-site path requires it | Phase 1 preflight and Packet 1.1         |
-| Public host                          | ChatGPT Sites                                                                    | Before any authorized release deployment |
-| Voice in final demo                  | Off unless Gate E is fully green                                                 | Packet 4.4 cut decision                  |
-| Realtime model and voice             | Current verified official values through server configuration                    | Packet 4.2 and 4.4                       |
-| P2 undo                              | Omit unless all earlier gates are green                                          | Packet 5.1                               |
-| Public license                       | MIT unless the owner chooses another license                                     | Packet 5.3                               |
-| Demo-freeze date                     | At least 48 hours before the current verified deadline                           | Before release planning                  |
+| Decision                             | Default                                                                                                                                        | Resolve by                               |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| Exact Sites/Vite integration changes | Add only the minimum supported integration if the existing-site path requires it                                                               | Phase 1 preflight and Packet 1.1         |
+| Public host                          | ChatGPT Sites                                                                                                                                  | Before any authorized release deployment |
+| Voice in final demo                  | Off unless Gate E is fully green                                                                                                               | Packet 4.4 cut decision                  |
+| Gemini Live model and transport      | Candidate `gemini-2.5-flash-native-audio-preview-12-2025`; verify current official values, free tier, and secure transport before runtime work | Gemini companion Phase 3 and 5           |
+| P2 undo                              | Omit unless all earlier gates are green                                                                                                        | Packet 5.1                               |
+| Public license                       | MIT unless the owner chooses another license                                                                                                   | Packet 5.3                               |
+| Demo-freeze date                     | At least 48 hours before the current verified deadline                                                                                         | Before release planning                  |
 
 No decision is required to create this ledger. If future evidence conflicts with the synthetic scope, shared-tool voice architecture, no-agent-submission boundary, or Sites single-owner rule, stop and request a decision.
 
@@ -213,4 +237,28 @@ Phase 3 Packets 3.1 and 3.2 are locally validated on baseline `ed53c020510dc7ea2
 
 The user authorized the public Sites route on 2026-08-27. CivicFlow was saved as Sites version 1 from source commit `537493810e06be0bcca5c42a7a80552663595336` and published at `https://civicflow.codesm.chatgpt.site`. Versions 1 and 2 returned 404 for `/` in Sites Worker logs. Version 2 included an explicit root-to-`/index.html` mapping, but the 404 persisted because the static bundle was archived at `dist/index.html`/`dist/assets` instead of the Sites-compatible `dist/client/index.html`/`dist/client/assets` layout. The corrective clean prebuild and Vite output change were committed locally as `196ce8c1d65c6c33ea2dd3a191f6a65f49f3ecf9`, published through the GitHub connector as `4cc6b8dd57059a7e8b8e646af4549b4f0151f4a8`, pushed to the Sites source branch, saved as Sites version 3, and deployed successfully. The Site is active, public, and served at `https://civicflow.codesm.chatgpt.site`; the local aggregate `npm run verify` passed before this commit and the production build/package completed for the exact source commit.
 
-The supported live E1–E8 audit was attempted after deployment but could not proceed: the in-app Browser URL policy rejected the `codesm.chatgpt.site` page before the tab could be claimed. Per the browser safety boundary, no alternate browser, raw network, or indirect execution route was used. Therefore Gate D remains open: deployment is evidenced, but no live Site Tools discovery/execution claims are made until a supported browser route can claim the public page.
+The supported live route later produced partial same-tab evidence in a newly
+opened visible CivicFlow tab: Site Tools added Subhav Mathur (age 27, spouse,
+applying), added Optum income at `$1,000` monthly, set `No current coverage`
+for Maya Carter and Subhav Mathur, and navigated to Review & Sign. The human UI
+attached the synthetic Acme Dental proof-of-income preset. The user reported
+completing the final human step, but that final completion was not independently
+observed by this ledger task. An earlier no-visible-update report was caused by
+controlling a different CivicFlow tab than the tab being watched; a subsequent
+same-tab run updated visible state and activity without refresh. These are
+partial observations only: the complete parent E1–E8/Packet 6.4 evidence table
+and independent acceptance are still open. No alternate browser, raw network,
+or indirect execution route is used to fill missing rows.
+
+### Current checkpoint
+
+- **Repository:** `/Users/SubhavMathur/Desktop/Subhav Main/AI Projects/CivicFlow`
+- **Local branch/HEAD:** `main` / `3fff4b7c75c726b21803a2a3e10fabd8c560cdd8`
+- **Local status at companion Phase 0 preflight:** clean, no staged or unstaged changes
+- **Public URL:** `https://civicflow.codesm.chatgpt.site`
+- **Latest coordinator-known Sites state:** version 5 and deployment
+  `appgdep_6a91523e82dc8191a96978dab40fb819`; reverify exact identity before a
+  release claim
+- **Optional runtime:** Gemini Live is selected for future companion work; no
+  Gemini Live call or credential access occurred during this ledger update
+- **Child ledger:** [CivicFlow Gemini Live companion v1](../civicflow-gemini-companion-v1/MASTER.md), Phases 0–2 `validated` after documentation/source closure, local feedback/retention polish, and provider-neutral bridge implementation; later phases remain planned

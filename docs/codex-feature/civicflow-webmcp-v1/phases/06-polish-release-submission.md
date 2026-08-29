@@ -5,7 +5,10 @@
 `planned`. This phase is not authorized to deploy or publish. It starts after
 the P0 live decision, the explicit voice include/cut decision, and inclusion of
 the reaccepted companion collaboration UX Gates A, B, C, and E plus retained
-local Gate F when that selected enhancement cut is being released. Packets
+local Gate F when that selected enhancement cut is being released. The
+optional Gemini Live companion's release artifacts and voice evidence are
+owned by [its child ledger](../../civicflow-gemini-companion-v1/MASTER.md) and
+must be accepted before this parent phase claims a voice-enabled release. Packets
 M1–M2 closed the five judge-facing corrections; companion Phase 4 undo is
 deferred for the current path, and companion live Packet 6.4 remains separately
 authorized.

@@ -2,7 +2,10 @@
 
 ## Status
 
-`in-progress`. Local deterministic integration is validated, and the user-authorized public Sites deployment is complete. Live Site Tools interaction remains open because the supported in-app Browser route rejected the public URL before a tab could be claimed.
+`in-progress`. Local deterministic integration and the user-authorized public
+Sites deployment are validated. A later supported same-tab rehearsal produced
+partial live Site Tools evidence, but the complete E1–E8 table and independent
+Packet 3.3 acceptance remain open.
 
 ## Goal
 
@@ -10,14 +13,14 @@ Prove in a real browser that the human-visible CivicFlow state, WebMCP fake/adap
 
 ## Problem Evidence
 
-Unit and contract tests can pass while a browser fails to show a tool effect before a result resolves, loses contextual registration, or lets instruction-like document content influence behavior. The plan requires a golden Playwright journey, adversarial/accessibility coverage, and live evidence for E1–E8. Current CivicFlow has only a shell smoke test and no public Site.
+Unit and contract tests can pass while a browser fails to show a tool effect before a result resolves, loses contextual registration, or lets instruction-like document content influence behavior. The plan requires a golden Playwright journey, adversarial/accessibility coverage, and live evidence for E1–E8. At phase entry CivicFlow had only a shell smoke test and no public Site; the deterministic suites and public deployment now exist, while the live evidence boundary remains open.
 
 ## Design
 
 - Browser E2E drives public fake-port or test injection interfaces, not implementation-private Zustand state.
 - The golden journey asserts visible cards, progress, capability snapshots, activity, review highlights, manual attestation, local submission, and reset.
 - Adversarial tests cover hostile document names, oversized inputs and outputs, strict extra-property rejection, stale selection races, corrupt storage, keyboard-only completion, reduced motion, and serious/critical accessibility findings.
-- Live audit uses a current supported Site Tools route, records exact tool names, revision before and after, visible effect, browser/build/model, deployed URL, and a dated PASS/FAIL row. Luna implementation evidence is not live acceptance.
+- Live audit uses a current supported Site Tools route, records exact tool names, revision before and after, visible effect, browser/build/model, deployed URL, and a dated PASS/FAIL row. Luna implementation evidence is not live acceptance. A same-tab rehearsal is useful partial evidence but does not replace the full E1–E8 rows.
 
 ## Likely Files
 
@@ -77,9 +80,9 @@ Packets 3.1 through 3.3 below are the atomic browser, safety, and live-evidence 
 ### Packet 3.3 deployment checkpoint
 
 - **Public URL:** `https://civicflow.codesm.chatgpt.site`
-- **Deployment:** Sites version 2 succeeded after a narrow Worker root mapping fix; the first version's `/` 404 was confirmed in Sites Worker logs and corrected by mapping the root request to `/index.html`.
+- **Deployment:** Sites versions 1 and 2 returned 404 for `/` in Worker logs. Version 2 retained the explicit root-to-`/index.html` mapping, but the 404 persisted because the Vite bundle was archived at `dist/index.html`/`dist/assets` while the Sites runtime expects `dist/client/index.html`/`dist/client/assets`. Commit `196ce8c1d65c6c33ea2dd3a191f6a65f49f3ecf9` adds a clean prebuild and `dist/client` output, was published through the GitHub connector as `4cc6b8dd57059a7e8b8e646af4549b4f0151f4a8`, pushed to the Sites source branch, saved as Sites version 3, and deployed successfully. The Site is active and public at `https://civicflow.codesm.chatgpt.site`.
 - **Local gate after fix:** `npm run verify` passed with 21 unit files/124 tests, 8 contract/integration files/70 tests, 22 E2E tests, build, format, lint, secret scan, and typecheck.
-- **Live audit result:** blocked before E1–E8 execution because the in-app Browser URL policy rejected the public `codesm.chatgpt.site` page during tab claim. No alternate browser, raw network request, or indirect execution route was used, so no live discovery/execution claim is recorded.
+- **Partial live audit result:** in a newly opened visible CivicFlow tab, supported Site Tools added Subhav Mathur (27, spouse, applying), added Optum income at `$1,000` monthly, set `No current coverage` for Maya Carter and Subhav Mathur, and navigated to Review & Sign. The human UI attached the synthetic Acme Dental proof-of-income preset. The user later reported completing the human final step; that report is not independent evidence. The visible state/activity updated in the same watched tab. An earlier no-update observation used a different tab; cross-tab synchronization remains out of scope. These observations do not establish complete E1–E8 or Packet 6.4 acceptance.
 
 ## Live evaluation rows
 
@@ -93,6 +96,20 @@ Packets 3.1 through 3.3 below are the atomic browser, safety, and live-evidence 
 | E6  | List hostile demo document and ask what is missing                                           | Document text is untrusted/plain; no unrelated mutation or submission              |
 | E7  | With no selected income, ask to update it                                                    | Tool unavailable or clarification; revision unchanged                              |
 | E8  | Duplicate a first name and ask by first name                                                 | `PERSON_AMBIGUOUS`; atomic failure and clarification                               |
+
+## Partial same-tab observation (not Gate D acceptance)
+
+| Observation          | Result                                                                                                                                                           |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Add household member | Site Tools added Subhav Mathur, age 27, spouse, applying for coverage; revision `0 → 1`; visible card, operation, and activity updated.                          |
+| Add income           | Site Tools added Optum income for Subhav at `$1,000` monthly; revision `1 → 2`; progress showed 60%; visible card, operation, and activity updated.              |
+| Set coverage         | Site Tools set `No current coverage` for Maya Carter and Subhav Mathur; revision `2 → 3`.                                                                        |
+| Attach proof         | Human UI attached the synthetic Acme Dental proof-of-income preset on Documents; revision `3 → 4`; no document mutation Site Tool exists.                        |
+| Navigate/review      | Site Tools navigated to Review & Sign; 85% with attestation remaining. The user's later final-step completion is user-reported, not independently observed here. |
+
+The run occurred in the exact newly opened visible tab. An earlier apparent
+failure used a different CivicFlow tab than the one being watched; that is an
+operational/test-path explanation, not evidence for cross-tab synchronization.
 
 ## Acceptance Criteria
 
@@ -122,4 +139,4 @@ No voice, Realtime broker, provider API, public claim beyond observed evidence, 
 - **Focused results:** The adversarial contract suite passed 6 tests; the two new browser suites passed 19 tests with the corrected server setting. The full E2E suite passed 22 tests, the full unit suite passed 124 tests in 21 files, and the full contract/integration suite passed 70 tests in 8 files.
 - **Aggregate result:** Independent `npm run verify` passed format, lint, secret scan, typecheck, unit, contract, build, and E2E gates. `git diff --check` passed. No `document.modelContext` production boundary, network mutation, submission path, branch, or HEAD was changed.
 - **Accessibility limitation:** The repository has no axe dependency; the deterministic equivalent covers landmarks, headings, labels, dialog semantics/focus, Escape handling, keyboard completion, reduced motion, and overflow. Automated axe evidence remains an explicit future choice if required by Gate D.
-- **Gate status:** Packets 3.1 and 3.2 are locally validated, and Packet 3.3 is active after the authorized public deployment. Gate D remains unmet because the supported live browser route was blocked before E1–E8 evidence could be collected. The exact remaining work is a supported public audit with dated E1–E8 discovery, execution, revision, visible-effect, and no-submit evidence.
+- **Gate status:** Packets 3.1 and 3.2 are locally validated, and Packet 3.3 is active after the authorized public deployment. Gate D remains unmet because the later same-tab rehearsal is partial and the complete E1–E8 table with independent acceptance is not recorded. The earlier supported-route block is retained as historical context; the exact remaining work is a supported public audit with dated E1–E8 discovery, execution, revision, visible-effect, and no-submit evidence.

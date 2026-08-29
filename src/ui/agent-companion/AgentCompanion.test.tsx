@@ -126,9 +126,67 @@ describe('AgentCompanion Component (Packet 2.3)', () => {
       />,
     );
 
-    expect(screen.getByText('get_application_progress')).toBeInTheDocument();
-    expect(screen.getByText('add_household_member')).toBeInTheDocument();
+    const primaryLabels = Array.from(
+      screen
+        .getByRole('list', { name: 'Available capabilities' })
+        .querySelectorAll('.capability-item-main > strong'),
+    ).map((label) => label.textContent);
+    expect(primaryLabels).toEqual([
+      'Get application progress',
+      'Add household member',
+    ]);
     expect(screen.getByText('Add a new household member')).toBeInTheDocument();
+  });
+
+  it('presents friendly capability labels and keeps technical names in disclosure', () => {
+    render(
+      <AgentCompanion
+        capabilities={sampleCapabilities}
+        activity={[]}
+        isOpen={false}
+        onClose={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+
+    expect(screen.getByText('Add household member')).toBeInTheDocument();
+    const technicalDetails = screen.getAllByText('Technical details');
+    expect(
+      technicalDetails.some((summary) =>
+        summary
+          .closest('details')
+          ?.textContent?.includes('add_household_member'),
+      ),
+    ).toBe(true);
+  });
+
+  it('progressively discloses activity action metadata and affected entities', () => {
+    render(
+      <AgentCompanion
+        capabilities={[]}
+        activity={[
+          {
+            ...sampleActivity[0],
+            affectedEntities: [
+              {
+                kind: 'household_member',
+                id: 'person-emma',
+                label: 'Emma Carter',
+              },
+            ],
+          },
+        ]}
+        isOpen={false}
+        onClose={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+
+    expect(screen.getByText('Activity details')).toBeInTheDocument();
+    const details = screen.getByText('Activity details').closest('details');
+    expect(details).toHaveTextContent('Action ID');
+    expect(details).toHaveTextContent('person-emma');
+    expect(details).toHaveTextContent('Emma Carter');
   });
 
   it('renders unavailable / empty state when no capabilities are active', () => {

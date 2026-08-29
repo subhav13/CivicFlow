@@ -18,7 +18,11 @@ import {
   type OperationDescriptor,
   type OperationState,
 } from './operation-feedback';
-
+import {
+  clearRetainedActivity,
+  loadRetainedActivity,
+  saveRetainedActivity,
+} from './activity-retention';
 export interface Selection {
   kind: 'household' | 'income';
   id: string;
@@ -97,10 +101,10 @@ export interface DispatchOptions {
 
 export interface ApplicationStoreOptions {
   storage?: StorageLike | null;
+  sessionStorage?: Storage | null;
   now?: () => Date;
   newId?: () => string;
 }
-
 export interface CivicFlowStore {
   getState: StoreApi<CivicFlowState>['getState'];
   subscribe: StoreApi<CivicFlowState>['subscribe'];
@@ -140,13 +144,15 @@ export interface CivicFlowStore {
   setRecentEffect(effect: RecentEffect | null): void;
 }
 
-function createInitialUiState(): UiState {
+function createInitialUiState(
+  initialActivity: readonly ActivityEntry[] = [],
+): UiState {
   return {
     activeSection: 'about',
     selection: null,
     reviewHighlights: [],
     capabilities: [],
-    activity: [],
+    activity: initialActivity.slice(0, 20),
     voice: { status: 'idle', transcript: '', error: null },
     activeOperation: null,
     recentEffect: null,
@@ -234,6 +240,8 @@ export function createCivicFlowStore(
 ): CivicFlowStore {
   const now = options.now ?? (() => new Date());
   const newId = options.newId ?? defaultNewId;
+  const sessionStore = options.sessionStorage;
+  const retainedActivity = loadRetainedActivity(sessionStore);
   const hydrated = loadApplication(options.storage);
   const initialPersistenceUiState: PersistenceUiState =
     hydrated.storageUnavailable
@@ -258,11 +266,10 @@ export function createCivicFlowStore(
 
   const store = createStore<CivicFlowState>(() => ({
     application: hydrated.application,
-    ui: createInitialUiState(),
+    ui: createInitialUiState(retainedActivity),
     persistenceNotice: hydrated.persistenceNotice,
     persistenceUiState: initialPersistenceUiState,
   }));
-
   function persist(application: ApplicationState): {
     notice: PersistenceNotice;
     uiState: PersistenceUiState;
@@ -353,6 +360,7 @@ export function createCivicFlowStore(
             dispatchOptions.activity.afterRevision ?? beforeRevision,
         };
         failUi = addActivity(failUi, failActivity, source, beforeRevision, now);
+        saveRetainedActivity(failUi.activity, sessionStore);
       }
       if (failUi !== current.ui) {
         store.setState({ ui: failUi });
@@ -365,8 +373,10 @@ export function createCivicFlowStore(
       : current.application;
     const afterRevision = receipt.stateRevision;
 
+    if (doResetUi) {
+      clearRetainedActivity(sessionStore);
+    }
     let ui = doResetUi ? createInitialUiState() : current.ui;
-
     // Resolve operation lifecycle into the post-reset/no-reset ui
     if (op !== undefined && !doResetUi) {
       const actionIdMatch = receipt.actionId === op.actionId;
@@ -394,6 +404,7 @@ export function createCivicFlowStore(
           receipt.changedEntities.map((e) => ({ ...e })),
       };
       ui = addActivity(ui, activityEntry, source, beforeRevision, now);
+      saveRetainedActivity(ui.activity, sessionStore);
     }
 
     // Publish recentEffect only for changed dispatches with activity
@@ -460,7 +471,7 @@ export function createCivicFlowStore(
     store.setState({ ui: update(store.getState().ui) });
   }
 
-  return {
+  const api: CivicFlowStore = {
     getState: store.getState,
     subscribe: store.subscribe,
     dispatch: (transition, dispatchOptions) =>
@@ -475,17 +486,22 @@ export function createCivicFlowStore(
       updateUi((ui) => ({ ...ui, reviewHighlights: [...reviewHighlights] })),
     setCapabilities: (capabilities) =>
       updateUi((ui) => ({ ...ui, capabilities: [...capabilities] })),
-    appendActivity: (activity) =>
-      updateUi((ui) =>
-        addActivity(
+    appendActivity: (entry) =>
+      updateUi((ui) => {
+        const nextUi = addActivity(
           ui,
-          activity,
-          activity.source ?? 'human',
+          entry,
+          entry.source ?? 'human',
           store.getState().application.revision,
           now,
-        ),
-      ),
-    resetUi: () => updateUi(() => createInitialUiState()),
+        );
+        saveRetainedActivity(nextUi.activity, sessionStore);
+        return nextUi;
+      }),
+    resetUi: () => {
+      clearRetainedActivity(sessionStore);
+      updateUi(() => createInitialUiState());
+    },
     beginOperation: (operation) =>
       updateUi((ui) => ({
         ...ui,
@@ -539,4 +555,5 @@ export function createCivicFlowStore(
           : null,
       })),
   };
+  return api;
 }

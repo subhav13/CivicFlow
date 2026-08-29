@@ -157,8 +157,16 @@ test.describe.serial('WebMCP real-browser golden journey (Packet 3.1)', () => {
       page
         .getByRole('list', { name: 'Available capabilities' })
         .locator('strong')
-        .filter({ hasText: 'update_income_source' }),
+        .filter({ hasText: 'Update income source' }),
     ).toBeVisible();
+
+    const technicalDetails = page
+      .getByRole('list', { name: 'Available capabilities' })
+      .locator('li')
+      .filter({ hasText: 'Update income source' })
+      .locator('details');
+    await technicalDetails.locator('summary').click();
+    await expect(technicalDetails).toContainText('update_income_source');
 
     // Deselecting it removes it again
     await page

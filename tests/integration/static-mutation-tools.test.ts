@@ -172,6 +172,43 @@ describe('Static Mutation Tools', () => {
       expect(result.stateRevision).toBe(initialRevision);
       expect(store.getState().application.revision).toBe(initialRevision);
     });
+
+    it('reports every missing required field by name across mutation tools', async () => {
+      const memberResult = JSON.parse(
+        await handlers.add_household_member({ firstName: 'Emma' }),
+      );
+      expect(memberResult.error.fieldErrors).toEqual(
+        expect.objectContaining({
+          ageYears: expect.stringContaining('required'),
+          relationship: expect.stringContaining('required'),
+          applyingForCoverage: expect.stringContaining('required'),
+        }),
+      );
+      expect(memberResult.error.fieldErrors).not.toHaveProperty('input');
+
+      const incomeResult = JSON.parse(
+        await handlers.add_income_source({ ownerName: 'Maya Carter' }),
+      );
+      expect(incomeResult.error.fieldErrors).toEqual(
+        expect.objectContaining({
+          employerName: expect.stringContaining('required'),
+          amount: expect.stringContaining('required'),
+          frequency: expect.stringContaining('required'),
+        }),
+      );
+      expect(incomeResult.error.fieldErrors).not.toHaveProperty('input');
+
+      const coverageResult = JSON.parse(
+        await handlers.set_current_coverage({}),
+      );
+      expect(coverageResult.error.fieldErrors).toEqual(
+        expect.objectContaining({
+          memberNames: expect.stringContaining('required'),
+          status: expect.stringContaining('required'),
+        }),
+      );
+      expect(coverageResult.error.fieldErrors).not.toHaveProperty('input');
+    });
   });
 
   describe('person resolution errors', () => {

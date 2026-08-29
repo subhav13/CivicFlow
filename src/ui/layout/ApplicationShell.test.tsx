@@ -1,6 +1,13 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
+import { vi } from 'vitest';
 
 import { App } from '../../app/App';
+import {
+  createDemoApplicationSeed,
+  getApplicationProgress,
+} from '../../domain';
+import type { OperationState } from '../../application/operation-feedback';
+import { ApplicationShell } from './ApplicationShell';
 
 describe('CivicFlow application shell', () => {
   it('renders the six sections in order with the seeded 20 percent progress', () => {
@@ -101,5 +108,83 @@ describe('CivicFlow application shell', () => {
         'Demo data ready · Changes save in this browser',
       ),
     ).toBeInTheDocument();
+  });
+
+  it('shows a dismissible agent notice when a completed change belongs to another section', () => {
+    const operation: OperationState = {
+      actionId: 'agent-household-change',
+      source: 'webmcp',
+      label: 'Add household member',
+      toolName: 'add_household_member',
+      section: 'household',
+      startedAt: '2026-08-28T00:00:00.000Z',
+      completedAt: '2026-08-28T00:00:01.000Z',
+      beforeRevision: 0,
+      afterRevision: 1,
+      phase: 'succeeded',
+      affectedEntityIds: ['person-emma'],
+    };
+    const onDismiss = vi.fn();
+
+    render(
+      <ApplicationShell
+        activeSection="income"
+        capabilities={[]}
+        companionOpen={false}
+        currentSection={<div>Current section</div>}
+        onCloseCompanion={() => {}}
+        onNavigate={() => {}}
+        onOpenCompanion={() => {}}
+        progress={getApplicationProgress(createDemoApplicationSeed())}
+        activeOperation={operation}
+        onDismissOperation={onDismiss}
+      />,
+    );
+
+    const toast = screen.getByTestId('agent-change-toast');
+    expect(toast).toHaveAttribute('data-action-id', 'agent-household-change');
+    expect(toast).toHaveTextContent(/household/i);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /dismiss agent update/i }),
+    );
+    expect(onDismiss).toHaveBeenCalledWith('agent-household-change');
+  });
+
+  it('describes a failed cross-section agent action as failed rather than updated', () => {
+    const operation: OperationState = {
+      actionId: 'agent-household-failure',
+      source: 'webmcp',
+      label: 'Update household member',
+      toolName: 'update_household_member',
+      section: 'household',
+      startedAt: '2026-08-28T00:00:00.000Z',
+      completedAt: '2026-08-28T00:00:01.000Z',
+      beforeRevision: 0,
+      phase: 'failed',
+      affectedEntityIds: [],
+      recovery: {
+        section: 'household',
+        message: 'Select a household member first.',
+      },
+    };
+
+    render(
+      <ApplicationShell
+        activeSection="income"
+        capabilities={[]}
+        companionOpen={false}
+        currentSection={<div>Current section</div>}
+        onCloseCompanion={() => {}}
+        onNavigate={() => {}}
+        onOpenCompanion={() => {}}
+        progress={getApplicationProgress(createDemoApplicationSeed())}
+        activeOperation={operation}
+      />,
+    );
+
+    const toast = screen.getByTestId('agent-change-toast');
+    expect(toast).toHaveTextContent(/failed|could not|unable/i);
+    expect(toast).not.toHaveTextContent(/updated/i);
   });
 });

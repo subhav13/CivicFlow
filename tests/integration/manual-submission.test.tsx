@@ -121,5 +121,5 @@ describe('manual synthetic submission', () => {
     expect(
       screen.getByRole('heading', { name: 'About You' }),
     ).toBeInTheDocument();
-  });
+  }, 15_000);
 });

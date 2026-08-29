@@ -11,6 +11,7 @@
 - **Repository:** `/Users/SubhavMathur/Desktop/Subhav Main/AI Projects/CivicFlow`
 - **Clean pre-planning baseline:** branch `main`, commit `801a165ff8f115d6a4801b1f33d087508104ec04`
 - **Parent ledger:** [CivicFlow WebMCP v1](../civicflow-webmcp-v1/MASTER.md)
+- **Optional voice companion:** [CivicFlow Gemini Live companion v1](../civicflow-gemini-companion-v1/MASTER.md)
 - **Live baseline:** `https://civicflow.codesm.chatgpt.site`
 
 This ledger remains the durable plan and evidence record. The user explicitly
@@ -97,6 +98,21 @@ Still outstanding before final release validation:
 - real document ingestion, OCR, or classification;
 - broad scenario libraries.
 
+### Optional Gemini companion
+
+The user selected Gemini Live for a future embedded text/voice companion based
+on reported free-tier availability that fits the hackathon constraint. The companion is owned
+by the linked child ledger and is not part of this collaboration ledger's
+accepted local implementation. It must consume this ledger's operation,
+activity, progress, confirmation, accessibility, and same-state contracts;
+voice/text must never create a second mutation surface. The candidate model,
+transport, quota/data-use terms, secure session boundary, and live acceptance
+remain open until current official Google documentation and the actual hosting
+environment are verified. The child ledger's Phase 0 documentation/source
+closure, separately authorized Phase 1 feedback/retention polish, and
+separately authorized Phase 2 provider-neutral current-tool-surface/function
+bridge are validated; later implementation phases require separate prompts.
+
 ## Non-goals and safety boundaries
 
 - No eligibility calculation, coverage recommendation, benefit determination, government API, or real submission.
@@ -107,7 +123,10 @@ Still outstanding before final release validation:
 - No change to the existing nine P0 tool names or their accepted mutation semantics. The only accepted additive tool is read-only `get_next_actions`.
 - No general-purpose natural-language execution tool. Inputs stay narrow, closed, typed, and bounded.
 - No persisted collaboration/UI history containing synthetic profile fields. Undo snapshots are memory-only and capped.
-- Voice remains optional and independent. It may consume the final WebMCP surface later, but this feature does not implement or require voice.
+- Voice remains optional and independent. The selected provider is Gemini Live,
+  but this feature does not implement or require the companion; it may consume
+  the final WebMCP surface only after the child ledger's security,
+  accessibility, and live gates pass.
 
 ## Primary use cases
 
@@ -491,7 +510,11 @@ These do not block planning. Resolve them at the stated gate:
 3. **Undo inclusion:** explicitly deferred for the current path; cutting undo does not block remediation of the selected release cut.
 4. **First-run guide default:** the guide starts expanded for the first session; this behavior was not reopened by the review.
 5. **Live deployment:** obtain explicit authorization only after the selected local release cut is reaccepted; Packet 6.4 remains blocked and pending.
-6. **Voice:** include or cut independently after the collaboration release is locally reaccepted.
+6. **Voice:** Gemini Live is selected for the optional companion based on
+   reported free-tier availability; include or cut independently after the collaboration
+   release is locally reaccepted and the child ledger's model/transport,
+   security, accessibility, quota, and live gates pass. The earlier OpenAI
+   Realtime design remains historical in the parent WebMCP ledger.
 
 ## Full-feature acceptance criteria
 

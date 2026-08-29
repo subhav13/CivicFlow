@@ -15,10 +15,18 @@ import { WebMcpRegistryManager } from './registry-manager';
 export function useWebMcpRegistry(
   store: CivicFlowStore,
   portOverride?: ModelContextPort,
+  managerOverride?: WebMcpRegistryManager | null,
 ): void {
   const managerRef = useRef<WebMcpRegistryManager | null>(null);
 
   useEffect(() => {
+    if (managerOverride) {
+      void managerOverride.start();
+      return () => {
+        // managerOverride lifecycle is managed by its creator
+      };
+    }
+
     const port = portOverride ?? new BrowserModelContextPort();
     const manager = new WebMcpRegistryManager({ port, store });
     managerRef.current = manager;
@@ -29,5 +37,5 @@ export function useWebMcpRegistry(
       manager.dispose();
       managerRef.current = null;
     };
-  }, [store, portOverride]);
+  }, [store, portOverride, managerOverride]);
 }

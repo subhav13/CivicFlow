@@ -1,20 +1,32 @@
 import { useEffect, useRef } from 'react';
 
 import type { ActivityEntry, CapabilitySummary } from '../../application/store';
+import {
+  getFriendlyOperationLabel,
+  type OperationState,
+} from '../../application/operation-feedback';
+import type { AssistantController } from '../../assistant/assistant-controller';
+import { AssistantPanel, type SpeechOutputService } from './AssistantPanel';
 
-interface AgentCompanionProps {
+export interface AgentCompanionProps {
   capabilities: readonly CapabilitySummary[];
   activity?: readonly ActivityEntry[];
+  assistantController?: AssistantController | null;
+  assistantEnabled?: boolean;
+  onReadCurrentSection?: () => string;
+  speechOutput?: SpeechOutputService;
+  activeOperation?: OperationState | null;
   isOpen: boolean;
   onClose: () => void;
   onOpen: () => void;
 }
-
 function ActivityItemView({ entry }: { entry: ActivityEntry }) {
   const isAgent = entry.source === 'webmcp';
   const sourceText = isAgent ? 'Agent action' : 'Human action';
   const hasRevision =
     entry.beforeRevision !== undefined && entry.afterRevision !== undefined;
+  const hasEntities =
+    entry.affectedEntities && entry.affectedEntities.length > 0;
 
   return (
     <li
@@ -51,6 +63,26 @@ function ActivityItemView({ entry }: { entry: ActivityEntry }) {
         )}
       </div>
       <span className="activity-summary">{entry.summary}</span>
+      <details className="activity-item-details">
+        <summary>Activity details</summary>
+        <div className="activity-item-details-body">
+          <p>
+            Action ID: <code>{entry.id}</code>
+          </p>
+          {hasEntities && (
+            <ul
+              className="activity-affected-entities"
+              aria-label="Affected entities"
+            >
+              {entry.affectedEntities!.map((entity) => (
+                <li key={entity.id} className="activity-affected-entity">
+                  {entity.kind}: {entity.label} ({entity.id})
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </details>
     </li>
   );
 }
@@ -58,9 +90,19 @@ function ActivityItemView({ entry }: { entry: ActivityEntry }) {
 function CompanionContent({
   capabilities,
   activity = [],
+  assistantController,
+  assistantEnabled,
+  onReadCurrentSection,
+  speechOutput,
+  activeOperation,
 }: {
   capabilities: readonly CapabilitySummary[];
   activity?: readonly ActivityEntry[];
+  assistantController?: AssistantController | null;
+  assistantEnabled?: boolean;
+  onReadCurrentSection?: () => string;
+  speechOutput?: SpeechOutputService;
+  activeOperation?: OperationState | null;
 }) {
   const latestActivity = activity[0];
   const statusSummary =
@@ -85,6 +127,14 @@ function CompanionContent({
           {filteredCapabilities.length > 0 ? 'WebMCP Active' : 'Local'}
         </span>
       </div>
+
+      <AssistantPanel
+        controller={assistantController}
+        enabled={assistantEnabled}
+        onReadCurrentSection={onReadCurrentSection}
+        speechOutput={speechOutput}
+        activeOperation={activeOperation}
+      />
 
       <div
         aria-live="polite"
@@ -162,12 +212,25 @@ function CompanionContent({
           </div>
         ) : (
           <ul className="capability-list" aria-label="Available capabilities">
-            {filteredCapabilities.map((capability) => (
-              <li key={capability.id}>
-                <strong>{capability.id}</strong>
-                <span>{capability.summary}</span>
-              </li>
-            ))}
+            {filteredCapabilities.map((capability) => {
+              const friendlyLabel = getFriendlyOperationLabel(capability.id);
+              return (
+                <li key={capability.id} className="capability-item">
+                  <div className="capability-item-main">
+                    <strong>{friendlyLabel}</strong>
+                    <span>{capability.summary}</span>
+                  </div>
+                  <details className="capability-details">
+                    <summary>Technical details</summary>
+                    <div className="capability-details-body">
+                      <strong>
+                        <code>{capability.id}</code>
+                      </strong>
+                    </div>
+                  </details>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
@@ -178,6 +241,11 @@ function CompanionContent({
 export function AgentCompanion({
   capabilities,
   activity = [],
+  assistantController,
+  assistantEnabled,
+  onReadCurrentSection,
+  speechOutput,
+  activeOperation,
   isOpen,
   onClose,
   onOpen,
@@ -208,7 +276,15 @@ export function AgentCompanion({
   return (
     <>
       <aside className="companion-panel" aria-label="Agent Companion">
-        <CompanionContent capabilities={capabilities} activity={activity} />
+        <CompanionContent
+          capabilities={capabilities}
+          activity={activity}
+          assistantController={assistantController}
+          assistantEnabled={assistantEnabled}
+          onReadCurrentSection={onReadCurrentSection}
+          speechOutput={speechOutput}
+          activeOperation={activeOperation}
+        />
         <button
           ref={triggerRef}
           className="companion-mobile-trigger"
@@ -241,7 +317,15 @@ export function AgentCompanion({
                 ×
               </button>
             </div>
-            <CompanionContent capabilities={capabilities} activity={activity} />
+            <CompanionContent
+              capabilities={capabilities}
+              activity={activity}
+              assistantController={assistantController}
+              assistantEnabled={assistantEnabled}
+              onReadCurrentSection={onReadCurrentSection}
+              speechOutput={speechOutput}
+              activeOperation={activeOperation}
+            />
           </section>
         </div>
       ) : null}

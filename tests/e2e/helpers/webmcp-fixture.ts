@@ -110,13 +110,11 @@ export async function installBrowserModelContext(page: Page): Promise<void> {
         }
         return result;
       },
-
       addEventListener(type: string, listener: () => void): void {
         if (type === 'toolchange') {
           listeners.add(listener);
         }
       },
-
       removeEventListener(type: string, listener: () => void): void {
         if (type === 'toolchange') {
           listeners.delete(listener);
@@ -151,8 +149,13 @@ export async function executeBrowserTool<T = unknown>(
       if (!document.modelContext) {
         throw new Error('document.modelContext is not defined');
       }
-      const tools = await document.modelContext.getTools();
-      const tool = tools.find((t) => t.name === toolName);
+      let tool: RegisteredToolRef | undefined;
+      for (let i = 0; i < 50; i++) {
+        const tools = await document.modelContext.getTools();
+        tool = tools.find((t) => t.name === toolName);
+        if (tool) break;
+        await new Promise((r) => setTimeout(r, 50));
+      }
       if (!tool) {
         throw new Error(`Tool not registered: ${toolName}`);
       }

@@ -1,5 +1,8 @@
 import { useEffect } from 'react';
-import type { OperationState } from '../../application/operation-feedback';
+import {
+  getFriendlyOperationLabel,
+  type OperationState,
+} from '../../application/operation-feedback';
 
 export interface OperationStatusProps {
   operation: OperationState | null;
@@ -29,17 +32,20 @@ export function OperationStatus({
   const isBusy =
     operation.phase === 'validating' || operation.phase === 'applying';
   const sourceLabel = operation.source === 'webmcp' ? 'Site Tool' : 'Human';
-  const opLabel = operation.toolName ?? operation.label;
+  const friendlyLabel = getFriendlyOperationLabel(
+    operation.label,
+    operation.toolName,
+  );
 
   let statusMessage: string;
   if (operation.phase === 'validating') {
-    statusMessage = `Validating ${opLabel}...`;
+    statusMessage = `Validating ${friendlyLabel}...`;
   } else if (operation.phase === 'applying') {
-    statusMessage = `Applying ${opLabel}...`;
+    statusMessage = `Applying ${friendlyLabel}...`;
   } else if (operation.phase === 'succeeded') {
-    statusMessage = `${opLabel} succeeded.`;
+    statusMessage = `${friendlyLabel} succeeded.`;
   } else {
-    statusMessage = operation.recovery?.message ?? `${opLabel} failed.`;
+    statusMessage = operation.recovery?.message ?? `${friendlyLabel} failed.`;
   }
 
   return (
@@ -72,6 +78,21 @@ export function OperationStatus({
           </span>
         )}
       </div>
+      {operation.toolName && (
+        <details className="operation-technical-details">
+          <summary>Technical details</summary>
+          <div className="operation-technical-content">
+            <span>
+              Tool: <code>{operation.toolName}</code>
+            </span>
+            {operation.actionId && (
+              <span>
+                Action ID: <code>{operation.actionId}</code>
+              </span>
+            )}
+          </div>
+        </details>
+      )}
       {operation.phase === 'failed' && onDismiss && (
         <button
           type="button"

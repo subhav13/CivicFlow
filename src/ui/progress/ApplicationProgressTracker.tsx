@@ -1,11 +1,17 @@
 import type { ProgressViewModel } from './progress-view-model';
+import {
+  getFriendlyOperationLabel,
+  type OperationState,
+} from '../../application/operation-feedback';
 
 interface ApplicationProgressTrackerProps {
   viewModel: ProgressViewModel;
+  activeOperation?: OperationState | null;
 }
 
 export function ApplicationProgressTracker({
   viewModel,
+  activeOperation,
 }: ApplicationProgressTrackerProps) {
   return (
     <header
@@ -38,6 +44,26 @@ export function ApplicationProgressTracker({
             <span style={{ width: `${viewModel.percent}%` }} />
           </div>
         </div>
+        {activeOperation && (
+          <div
+            className={`progress-operation-status progress-operation-${activeOperation.phase}`}
+            data-testid="progress-operation-status"
+            data-phase={activeOperation.phase}
+            data-action-id={activeOperation.actionId}
+            aria-live="polite"
+          >
+            <span className="progress-operation-dot" aria-hidden="true" />
+            <span>
+              {activeOperation.phase === 'validating'
+                ? `Validating ${getFriendlyOperationLabel(activeOperation.label, activeOperation.toolName)}...`
+                : activeOperation.phase === 'applying'
+                  ? `Applying ${getFriendlyOperationLabel(activeOperation.label, activeOperation.toolName)}`
+                  : activeOperation.phase === 'succeeded'
+                    ? `${getFriendlyOperationLabel(activeOperation.label, activeOperation.toolName)} succeeded`
+                    : `${getFriendlyOperationLabel(activeOperation.label, activeOperation.toolName)} failed`}
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="progress-stats-strip" aria-label="Progress details">

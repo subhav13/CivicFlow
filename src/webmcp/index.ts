@@ -8,6 +8,10 @@ export type {
 export { BrowserModelContextPort } from './browser-model-context-port';
 export { FakeModelContextPort } from './fake-model-context-port';
 export {
+  InProcessModelContextPort,
+  createDefaultModelContextPort,
+} from './in-process-model-context-port';
+export {
   CIVICFLOW_TOOL_NAMES,
   STATIC_TOOL_NAMES,
   CONTEXTUAL_TOOL_NAMES,

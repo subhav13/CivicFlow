@@ -1,3 +1,29 @@
+export const TOOL_FRIENDLY_LABELS: Readonly<Record<string, string>> = {
+  get_application_progress: 'Get application progress',
+  get_next_actions: 'Get next actions',
+  navigate_to_section: 'Navigate to section',
+  add_household_member: 'Add household member',
+  update_household_member: 'Update household member',
+  add_income_source: 'Add income source',
+  update_income_source: 'Update income source',
+  set_current_coverage: 'Set current coverage',
+  list_uploaded_documents: 'List uploaded documents',
+  review_application: 'Review application',
+};
+
+export function getFriendlyOperationLabel(
+  labelOrToolName?: string,
+  toolName?: string,
+): string {
+  if (toolName && TOOL_FRIENDLY_LABELS[toolName]) {
+    return TOOL_FRIENDLY_LABELS[toolName];
+  }
+  if (labelOrToolName && TOOL_FRIENDLY_LABELS[labelOrToolName]) {
+    return TOOL_FRIENDLY_LABELS[labelOrToolName];
+  }
+  return labelOrToolName ?? 'Operation';
+}
+
 export type OperationPhase = 'validating' | 'applying' | 'succeeded' | 'failed';
 
 export interface OperationDescriptor {

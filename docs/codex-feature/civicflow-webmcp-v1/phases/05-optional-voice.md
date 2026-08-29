@@ -1,8 +1,11 @@
-# Phase 4 — optional Realtime voice differentiator
+# Phase 4 — optional voice differentiator (historical OpenAI plan)
 
 ## Status
 
-`planned` and intentionally optional. Entry requires Gate D. If the voice path misses its declared cut date or any security/cost/live gate, mark it `deferred`, set the public voice mode to `off`, and ship the proven P0 without destabilizing it.
+`planned` and intentionally optional, but **superseded as the provider plan for
+new implementation**. The OpenAI Realtime/WebRTC design below is retained as
+historical planning and its safety gates are not erased. New runtime planning
+uses the [CivicFlow Gemini Live companion ledger](../../civicflow-gemini-companion-v1/MASTER.md), after its Phase 0 documentation/source closure is validated and separate phase-specific prompts. Entry still requires the parent Gate D decision. If the selected voice path misses its declared cut date or any security/cost/live gate, mark it `deferred`, set public voice mode to `off`, and ship the proven P0 without destabilizing it.
 
 ## Goal
 
@@ -10,7 +13,7 @@ Let an explicitly started embedded voice session discover and call the same curr
 
 ## Problem Evidence
 
-The product brief's differentiator is voice using `document.modelContext.getTools()` and `executeTool()` against the same live UI. The plan requires current-tool refresh, serialized function calls, a protected WebRTC session broker, media cleanup, and an explicit cut rule. No voice or server code exists in the current repository, and the normal portal must remain independent of it.
+The product brief's differentiator is voice using `document.modelContext.getTools()` and `executeTool()` against the same live UI. This historical plan captured the OpenAI route and its current-tool refresh, serialized function calls, protected WebRTC broker, media cleanup, and cut rule. No voice or server code exists in the current repository. The user subsequently selected Gemini Live based on reported free-tier availability; the exact Gemini protocol/model/credential route is owned by the linked child ledger and is not proven by this historical plan. The normal portal must remain independent of either provider.
 
 ## Design
 

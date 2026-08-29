@@ -87,7 +87,24 @@ describe('OperationStatus component (Packet 2.2)', () => {
     expect(statusEl).toHaveAttribute('data-phase', 'applying');
     expect(statusEl).toHaveAttribute('aria-busy', 'true');
     expect(screen.getByText('Site Tool:')).toBeInTheDocument();
-    expect(screen.getByText(/applying add_income_source/i)).toBeInTheDocument();
+    expect(screen.getByText(/applying add income source/i)).toBeInTheDocument();
+    const technicalDetails = screen.getByText('Technical details');
+    expect(technicalDetails.closest('details')).toHaveTextContent(
+      'add_income_source',
+    );
+  });
+
+  it('uses friendly primary copy and keeps the raw tool name in technical details', () => {
+    render(<OperationStatus operation={webmcpApplyingOp} />);
+
+    const statusEl = screen.getByTestId('operation-status');
+    expect(statusEl).toHaveTextContent('Applying Add income source');
+    expect(statusEl).not.toHaveTextContent('Applying add_income_source');
+
+    const technicalDetails = screen.getByText('Technical details');
+    expect(technicalDetails.closest('details')).toHaveTextContent(
+      'add_income_source',
+    );
   });
 
   it('renders revision and success feedback with aria-busy false', () => {
