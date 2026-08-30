@@ -280,10 +280,12 @@ class BrowserWebSocketWrapper implements LiveSocket {
     };
   }
 
-  send(message: string): void {
+  send(message: string): boolean {
     if (this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(message);
+      return true;
     }
+    return false;
   }
 
   close(): void {

@@ -1,6 +1,6 @@
-import type { ProviderFunctionTool } from '../src/assistant/types';
+import type { ProviderFunctionTool } from '../src/assistant/types.ts';
 
-export { GEMINI_LIVE_MODEL } from '../src/assistant/gemini-live-model';
+export { GEMINI_LIVE_MODEL } from '../src/assistant/gemini-live-model.ts';
 
 export interface GeminiSessionIssueRequest {
   model: string;
@@ -17,7 +17,8 @@ export interface IssuedEphemeralSession {
 
 export interface GeminiSessionCoreConfig {
   enabled?: boolean;
-  expectedOrigin: string;
+  expectedOrigin?: string;
+  expectedOrigins?: readonly string[];
   model: string;
   instructions: string;
   tools: readonly ProviderFunctionTool[];
@@ -50,6 +51,14 @@ export function createGeminiSessionCore(
   const sessionTimestamps: number[] = [];
   const nowFn = config.now ?? Date.now;
   const rateWindowMs = config.rateWindowMs ?? 60_000;
+  const allowedOrigins = new Set(
+    [
+      ...(config.expectedOrigins ?? []),
+      ...(config.expectedOrigin ? [config.expectedOrigin] : []),
+    ]
+      .map((origin) => origin.trim())
+      .filter((origin) => origin.length > 0),
+  );
 
   return async function handleGeminiSession(
     request: Request,
@@ -59,7 +68,7 @@ export function createGeminiSessionCore(
     }
 
     const origin = request.headers.get('origin');
-    if (!origin || origin !== config.expectedOrigin) {
+    if (!origin || !allowedOrigins.has(origin)) {
       return jsonResponse({ error: 'Forbidden origin.' }, 403);
     }
 
@@ -80,7 +89,12 @@ export function createGeminiSessionCore(
         return jsonResponse({ error: 'Payload too large.' }, 413);
       }
     }
-    const rawBody = await request.text();
+    let rawBody: string;
+    try {
+      rawBody = await request.text();
+    } catch {
+      return jsonResponse({ error: 'Invalid request body.' }, 400);
+    }
     const byteLength = new TextEncoder().encode(rawBody).length;
     if (config.maxBodyBytes !== undefined && byteLength > config.maxBodyBytes) {
       return jsonResponse({ error: 'Payload too large.' }, 413);

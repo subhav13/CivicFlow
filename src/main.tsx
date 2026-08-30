@@ -3,6 +3,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { App } from './app/App';
+import { resolveAssistantEnabled } from './app/client-voice-gate';
 import './styles.css';
 
 const rootElement = document.getElementById('root');
@@ -11,11 +12,10 @@ if (!rootElement) {
   throw new Error('CivicFlow root element is unavailable.');
 }
 
-const liveAuditEnabled =
-  import.meta.env.DEV && import.meta.env.VITE_CIVICFLOW_LIVE_AUDIT === '1';
+const assistantEnabled = resolveAssistantEnabled(import.meta.env);
 
 createRoot(rootElement).render(
   <StrictMode>
-    <App assistantEnabled={liveAuditEnabled} />
+    <App assistantEnabled={assistantEnabled} />
   </StrictMode>,
 );

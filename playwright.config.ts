@@ -18,7 +18,7 @@ export default defineConfig({
     // E2E tests are deterministic and must never inherit a developer's
     // optional local Gemini Live configuration or credentials.
     command:
-      'CIVICFLOW_LIVE_AUDIT=0 VITE_CIVICFLOW_LIVE_AUDIT=0 npm run dev -- --host 127.0.0.1 --port 4173',
+      'CIVICFLOW_LIVE_AUDIT=0 VITE_CIVICFLOW_LIVE_AUDIT=0 CIVICFLOW_VOICE_ENABLED=0 VITE_CIVICFLOW_VOICE_ENABLED=0 npm run dev -- --host 127.0.0.1 --port 4173',
     url: 'http://127.0.0.1:4173',
     reuseExistingServer: false,
   },

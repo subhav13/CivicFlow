@@ -4,6 +4,7 @@ import {
 } from '../../src/assistant/gemini-live-client';
 import type {
   EphemeralSessionCredential,
+  GeminiLiveEvent,
   LiveSocket,
 } from '../../src/assistant/gemini-live-client';
 
@@ -413,6 +414,75 @@ describe('Gemini Live protocol client', () => {
     expect(firstSocket.closed).toBe(true);
     expect(firstSocket.listenerCount('message')).toBe(0);
     expect(client.isConnected()).toBe(true);
+  });
+
+  it('keeps the accepted socket active until a replacement reaches setupComplete', async () => {
+    const firstSocket = new FakeSocket();
+    const secondSocket = new FakeSocket(false);
+    const issueEphemeralSession = vi
+      .fn<() => Promise<EphemeralSessionCredential>>()
+      .mockResolvedValueOnce({
+        accessToken: 'first-token',
+        expiresAt: credential.expiresAt,
+      })
+      .mockResolvedValueOnce({
+        accessToken: 'second-token',
+        expiresAt: credential.expiresAt,
+      });
+    const connectSocket = vi
+      .fn<(credential: EphemeralSessionCredential) => Promise<LiveSocket>>()
+      .mockResolvedValueOnce(firstSocket)
+      .mockResolvedValueOnce(secondSocket);
+    const client = createGeminiLiveClient({
+      issueEphemeralSession,
+      connectSocket,
+    });
+
+    await client.connect();
+    const replacement = client.reconnect?.();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(firstSocket.closed).toBe(false);
+    expect(client.isConnected()).toBe(true);
+
+    secondSocket.emit('message', {
+      data: JSON.stringify({ setupComplete: {} }),
+    } as never);
+    await replacement;
+
+    expect(firstSocket.closed).toBe(true);
+    expect(firstSocket.listenerCount('message')).toBe(0);
+    expect(secondSocket.listenerCount('message')).toBe(1);
+    expect(issueEphemeralSession).toHaveBeenCalledTimes(2);
+    expect(connectSocket).toHaveBeenCalledTimes(2);
+  });
+
+  it('retains the accepted socket when replacement setup fails without emitting a fatal session event', async () => {
+    const firstSocket = new FakeSocket();
+    const secondSocket = new FakeSocket(false);
+    const client = createGeminiLiveClient({
+      issueEphemeralSession: vi.fn(async () => credential),
+      connectSocket: vi
+        .fn<(credential: EphemeralSessionCredential) => Promise<LiveSocket>>()
+        .mockResolvedValueOnce(firstSocket)
+        .mockResolvedValueOnce(secondSocket),
+    });
+    const events: GeminiLiveEvent[] = [];
+    client.subscribe((event) => events.push(event));
+
+    await client.connect();
+    const replacement = client.reconnect?.();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    secondSocket.emit('close', {
+      code: 1007,
+      wasClean: false,
+      reasonCategory: 'setup_schema',
+    } as never);
+
+    await expect(replacement).rejects.toThrow('Assistant setup was rejected.');
+    expect(firstSocket.closed).toBe(false);
+    expect(client.isConnected()).toBe(true);
+    expect(events).toEqual([]);
   });
 
   it('marks the client disconnected on socket close and ignores later sends', async () => {

@@ -77,6 +77,8 @@ export interface LiveToolResponse {
 
 export interface GeminiLiveClient {
   connect(signal?: AbortSignal): Promise<void>;
+  /** Replace an accepted session after a tool-surface revision. */
+  reconnect?(): Promise<void>;
   disconnect(): void;
   sendText(text: string): void;
   sendAudio(data: string, mimeType?: string): void;
@@ -259,22 +261,26 @@ export function parseGeminiLiveMessage(raw: string): GeminiLiveEvent[] {
 export function createGeminiLiveClient(
   dependencies: GeminiLiveClientDependencies,
 ): GeminiLiveClient {
-  let socket: LiveSocket | undefined;
-  let connected = false;
-  let setupAccepted = false;
-  let connectGeneration = 0;
-  let pendingSetup:
-    | {
-        generation: number;
-        resolve: () => void;
-        reject: (reason?: unknown) => void;
-      }
-    | undefined;
-  const listeners = new Set<(event: GeminiLiveEvent) => void>();
+  interface SocketBinding {
+    socket: LiveSocket;
+    generation: number;
+    preserveActive: boolean;
+    setupAccepted: boolean;
+    cancelled: boolean;
+    setupErrorTimer?: ReturnType<typeof setTimeout>;
+    setupPromise: Promise<void>;
+    resolveSetup: () => void;
+    rejectSetup: (reason?: unknown) => void;
+    onMessage?: (event: LiveSocketEventMap['message']) => void;
+    onError?: (event: LiveSocketEventMap['error']) => void;
+    onClose?: (event: LiveSocketEventMap['close']) => void;
+  }
 
-  let onMessage: ((event: LiveSocketEventMap['message']) => void) | undefined;
-  let onError: ((event: LiveSocketEventMap['error']) => void) | undefined;
-  let onClose: ((event: LiveSocketEventMap['close']) => void) | undefined;
+  let activeBinding: SocketBinding | undefined;
+  let pendingBinding: SocketBinding | undefined;
+  let connected = false;
+  let connectGeneration = 0;
+  const listeners = new Set<(event: GeminiLiveEvent) => void>();
 
   const emit = (event: GeminiLiveEvent) => {
     for (const listener of listeners) {
@@ -282,190 +288,171 @@ export function createGeminiLiveClient(
     }
   };
 
-  const detachSocketListeners = (target?: LiveSocket) => {
-    const s = target ?? socket;
-    if (s) {
-      if (onMessage) s.removeEventListener('message', onMessage);
-      if (onError) s.removeEventListener('error', onError);
-      if (onClose) s.removeEventListener('close', onClose);
+  const detachSocketListeners = (binding: SocketBinding) => {
+    if (binding.onMessage) {
+      binding.socket.removeEventListener('message', binding.onMessage);
     }
-    if (!target || target === socket) {
-      onMessage = undefined;
-      onError = undefined;
-      onClose = undefined;
+    if (binding.onError) {
+      binding.socket.removeEventListener('error', binding.onError);
     }
+    if (binding.onClose) {
+      binding.socket.removeEventListener('close', binding.onClose);
+    }
+    binding.onMessage = undefined;
+    binding.onError = undefined;
+    binding.onClose = undefined;
   };
 
-  const terminateSocket = (target?: LiveSocket) => {
-    connected = false;
-    const s = target ?? socket;
-    if (s) {
-      detachSocketListeners(s);
-      s.close();
+  const closeBinding = (binding: SocketBinding, reason?: unknown) => {
+    if (binding.cancelled) return;
+    binding.cancelled = true;
+    if (binding.setupErrorTimer !== undefined) {
+      clearTimeout(binding.setupErrorTimer);
+      binding.setupErrorTimer = undefined;
     }
-    if (!target || target === socket) {
-      socket = undefined;
-      setupAccepted = false;
+    detachSocketListeners(binding);
+    if (pendingBinding === binding) pendingBinding = undefined;
+    if (activeBinding === binding) {
+      activeBinding = undefined;
+      connected = false;
     }
-  };
-
-  const rejectPendingSetup = (error: GeminiLiveConnectionError) => {
-    const pending = pendingSetup;
-    if (!pending) return;
-    pendingSetup = undefined;
-    pending.reject(error);
-  };
-
-  return {
-    async connect(signal?: AbortSignal): Promise<void> {
-      const generation = ++connectGeneration;
-      rejectPendingSetup(
-        new GeminiLiveConnectionError(
-          'Assistant connection was cancelled.',
-          'network',
-        ),
+    if (!binding.setupAccepted) {
+      binding.rejectSetup(
+        reason ??
+          new GeminiLiveConnectionError(
+            'Assistant connection was cancelled.',
+            'network',
+          ),
       );
-      if (socket) {
-        terminateSocket(socket);
-      }
+    }
+    binding.socket.close();
+  };
 
-      let credential: EphemeralSessionCredential;
-      try {
-        credential = await dependencies.issueEphemeralSession(signal);
-      } catch (err) {
-        if (generation === connectGeneration) {
-          connected = false;
+  const promoteBinding = (binding: SocketBinding) => {
+    const previous = activeBinding;
+    activeBinding = binding;
+    pendingBinding = undefined;
+    connected = true;
+    if (previous && previous !== binding && !previous.cancelled) {
+      closeBinding(previous);
+    }
+  };
+
+  const isKnownBinding = (binding: SocketBinding): boolean => {
+    return (
+      !binding.cancelled &&
+      (binding === activeBinding || binding === pendingBinding)
+    );
+  };
+
+  const failBeforeSetup = (
+    binding: SocketBinding,
+    kind: Extract<GeminiLiveEvent, { type: 'error' }>['kind'],
+    diagnostic: LiveConnectionDiagnostic | undefined,
+    emitError: boolean,
+  ) => {
+    if (binding.cancelled) return;
+    const error = new GeminiLiveConnectionError(
+      kind === 'quota'
+        ? 'Assistant session is temporarily unavailable.'
+        : 'Assistant setup was rejected.',
+      kind,
+      diagnostic,
+    );
+    closeBinding(binding, error);
+    if (emitError) {
+      emit({
+        type: 'error',
+        kind,
+        message: error.message,
+        ...(diagnostic ? { diagnostic } : {}),
+      });
+    }
+  };
+
+  const attachBinding = (binding: SocketBinding) => {
+    binding.onMessage = (event: LiveSocketEventMap['message']) => {
+      if (!isKnownBinding(binding)) return;
+      if (isSetupCompleteMessage(event.data)) {
+        if (binding.setupErrorTimer !== undefined) {
+          clearTimeout(binding.setupErrorTimer);
+          binding.setupErrorTimer = undefined;
         }
-        throw err;
-      }
-
-      let activeSocket: LiveSocket;
-      try {
-        activeSocket = await dependencies.connectSocket(credential);
-      } catch (err) {
-        if (generation === connectGeneration) {
-          connected = false;
-        }
-        throw err;
-      }
-
-      if (generation !== connectGeneration) {
-        activeSocket.close();
+        binding.setupAccepted = true;
+        promoteBinding(binding);
+        binding.resolveSetup();
         return;
       }
 
-      if (socket) {
-        terminateSocket(socket);
+      try {
+        const parsedEvents = parseGeminiLiveMessage(event.data);
+        for (const evt of parsedEvents) {
+          if (evt.type === 'error' && !binding.setupAccepted) {
+            failBeforeSetup(
+              binding,
+              evt.kind,
+              { phase: 'setup_rejected' },
+              !binding.preserveActive,
+            );
+            return;
+          }
+          // A replacement socket is silent until setupComplete. This keeps
+          // the accepted session's transcript and turn ordering intact while
+          // the new declaration set is being established.
+          if (binding.setupAccepted && binding === activeBinding) emit(evt);
+        }
+      } catch {
+        if (!binding.setupAccepted) {
+          failBeforeSetup(
+            binding,
+            'protocol',
+            { phase: 'setup_rejected' },
+            !binding.preserveActive,
+          );
+        } else if (binding === activeBinding) {
+          emit({
+            type: 'error',
+            kind: 'protocol',
+            message: 'Received an invalid assistant event.',
+          });
+        }
       }
+    };
 
-      socket = activeSocket;
-      connected = false;
-      setupAccepted = false;
-
-      const setupPromise = new Promise<void>((resolve, reject) => {
-        pendingSetup = { generation, resolve, reject };
-      });
-      let setupErrorTimer: ReturnType<typeof setTimeout> | undefined;
-      const clearSetupErrorTimer = () => {
-        if (setupErrorTimer !== undefined) {
-          clearTimeout(setupErrorTimer);
-          setupErrorTimer = undefined;
-        }
-      };
-
-      const failBeforeSetup = (
-        kind: Extract<GeminiLiveEvent, { type: 'error' }>['kind'],
-        diagnostic?: LiveConnectionDiagnostic,
-      ) => {
-        clearSetupErrorTimer();
-        const error = new GeminiLiveConnectionError(
-          kind === 'quota'
-            ? 'Assistant session is temporarily unavailable.'
-            : 'Assistant setup was rejected.',
-          kind,
-          diagnostic,
-        );
-        terminateSocket(activeSocket);
-        rejectPendingSetup(error);
-        emit({
-          type: 'error',
-          kind,
-          message: error.message,
-          ...(diagnostic ? { diagnostic } : {}),
-        });
-      };
-
-      onMessage = (event: LiveSocketEventMap['message']) => {
-        if (generation !== connectGeneration || socket !== activeSocket) {
-          return;
-        }
-        if (isSetupCompleteMessage(event.data)) {
-          clearSetupErrorTimer();
-          setupAccepted = true;
-          connected = true;
-          const pending = pendingSetup;
-          if (pending?.generation === generation) {
-            pendingSetup = undefined;
-            pending.resolve();
-          }
-          return;
-        }
-        try {
-          const parsedEvents = parseGeminiLiveMessage(event.data);
-          for (const evt of parsedEvents) {
-            if (evt.type === 'error' && !setupAccepted) {
-              failBeforeSetup(evt.kind, { phase: 'setup_rejected' });
-              return;
+    binding.onError = () => {
+      if (!isKnownBinding(binding)) return;
+      if (!binding.setupAccepted) {
+        if (binding.setupErrorTimer === undefined) {
+          binding.setupErrorTimer = setTimeout(() => {
+            binding.setupErrorTimer = undefined;
+            if (isKnownBinding(binding) && !binding.setupAccepted) {
+              failBeforeSetup(
+                binding,
+                'network',
+                { phase: 'setup_rejected' },
+                !binding.preserveActive,
+              );
             }
-            emit(evt);
-          }
-        } catch {
-          if (!setupAccepted) {
-            failBeforeSetup('protocol', { phase: 'setup_rejected' });
-          } else {
-            emit({
-              type: 'error',
-              kind: 'protocol',
-              message: 'Received an invalid assistant event.',
-            });
-          }
+          }, 1000);
         }
-      };
+        return;
+      }
+      if (binding !== activeBinding) return;
+      closeBinding(binding);
+      emit({
+        type: 'error',
+        kind: 'network',
+        message: 'Assistant connection failed.',
+      });
+    };
 
-      onError = () => {
-        if (generation !== connectGeneration || socket !== activeSocket) {
-          return;
-        }
-        if (!setupAccepted) {
-          if (setupErrorTimer === undefined) {
-            setupErrorTimer = setTimeout(() => {
-              setupErrorTimer = undefined;
-              if (
-                generation === connectGeneration &&
-                socket === activeSocket &&
-                !setupAccepted
-              ) {
-                failBeforeSetup('network', { phase: 'setup_rejected' });
-              }
-            }, 1000);
-          }
-          return;
-        }
-        terminateSocket(activeSocket);
-        emit({
-          type: 'error',
-          kind: 'network',
-          message: 'Assistant connection failed.',
-        });
-      };
-
-      onClose = (event) => {
-        if (generation !== connectGeneration || socket !== activeSocket) {
-          return;
-        }
-        const wasSetupAccepted = setupAccepted;
-        if (!wasSetupAccepted) {
-          failBeforeSetup('protocol', {
+    binding.onClose = (event) => {
+      if (!isKnownBinding(binding)) return;
+      if (!binding.setupAccepted) {
+        failBeforeSetup(
+          binding,
+          'protocol',
+          {
             phase: 'setup_rejected',
             ...(typeof event.code === 'number'
               ? { closeCode: event.code }
@@ -476,80 +463,177 @@ export function createGeminiLiveClient(
             ...(event.reasonCategory
               ? { closeReasonCategory: event.reasonCategory }
               : {}),
-          });
-          return;
-        }
-        terminateSocket(activeSocket);
-        emit({
-          type: 'error',
-          kind: 'network',
-          message: 'Assistant connection closed.',
-          diagnostic: {
-            phase: 'remote_close_after_setup',
-            ...(typeof event.code === 'number'
-              ? { closeCode: event.code }
-              : {}),
-            ...(typeof event.wasClean === 'boolean'
-              ? { wasClean: event.wasClean }
-              : {}),
-            ...(event.reasonCategory
-              ? { closeReasonCategory: event.reasonCategory }
-              : {}),
           },
-        });
-      };
+          !binding.preserveActive,
+        );
+        return;
+      }
+      if (binding !== activeBinding) return;
+      closeBinding(binding);
+      emit({
+        type: 'error',
+        kind: 'network',
+        message: 'Assistant connection closed.',
+        diagnostic: {
+          phase: 'remote_close_after_setup',
+          ...(typeof event.code === 'number' ? { closeCode: event.code } : {}),
+          ...(typeof event.wasClean === 'boolean'
+            ? { wasClean: event.wasClean }
+            : {}),
+          ...(event.reasonCategory
+            ? { closeReasonCategory: event.reasonCategory }
+            : {}),
+        },
+      });
+    };
 
-      socket.addEventListener('message', onMessage);
-      socket.addEventListener('error', onError);
-      socket.addEventListener('close', onClose);
+    binding.socket.addEventListener('message', binding.onMessage);
+    binding.socket.addEventListener('error', binding.onError);
+    binding.socket.addEventListener('close', binding.onClose);
+  };
 
-      await setupPromise;
-      if (generation !== connectGeneration) return;
+  const openBinding = async (
+    generation: number,
+    preserveActive: boolean,
+    signal?: AbortSignal,
+  ): Promise<void> => {
+    let credential: EphemeralSessionCredential;
+    try {
+      credential = await dependencies.issueEphemeralSession(signal);
+    } catch (err) {
+      if (!preserveActive && generation === connectGeneration) {
+        connected = false;
+      }
+      throw err;
+    }
+
+    if (preserveActive && generation !== connectGeneration) return;
+
+    let liveSocket: LiveSocket;
+    try {
+      liveSocket = await dependencies.connectSocket(credential);
+    } catch (err) {
+      if (!preserveActive && generation === connectGeneration) {
+        connected = false;
+      }
+      throw err;
+    }
+
+    if (generation !== connectGeneration) {
+      liveSocket.close();
+      return;
+    }
+
+    let resolveSetup!: () => void;
+    let rejectSetup!: (reason?: unknown) => void;
+    const binding: SocketBinding = {
+      socket: liveSocket,
+      generation,
+      preserveActive,
+      setupAccepted: false,
+      cancelled: false,
+      setupPromise: new Promise<void>((resolve, reject) => {
+        resolveSetup = resolve;
+        rejectSetup = reject;
+      }),
+      resolveSetup,
+      rejectSetup,
+    };
+    pendingBinding = binding;
+    attachBinding(binding);
+    await binding.setupPromise;
+    if (generation !== connectGeneration) return;
+  };
+
+  return {
+    async connect(signal?: AbortSignal): Promise<void> {
+      const generation = ++connectGeneration;
+      if (pendingBinding) {
+        closeBinding(
+          pendingBinding,
+          new GeminiLiveConnectionError(
+            'Assistant connection was cancelled.',
+            'network',
+          ),
+        );
+      }
+      if (activeBinding) closeBinding(activeBinding);
+      await openBinding(generation, false, signal);
+    },
+
+    async reconnect(): Promise<void> {
+      if (!activeBinding || !connected) {
+        throw new GeminiLiveConnectionError(
+          'Assistant connection is not active.',
+          'network',
+        );
+      }
+      const generation = ++connectGeneration;
+      if (pendingBinding) {
+        closeBinding(
+          pendingBinding,
+          new GeminiLiveConnectionError(
+            'Assistant connection was cancelled.',
+            'network',
+          ),
+        );
+      }
+      await openBinding(generation, true);
     },
 
     disconnect(): void {
       connectGeneration++;
-      rejectPendingSetup(
-        new GeminiLiveConnectionError(
-          'Assistant connection was cancelled.',
-          'network',
-        ),
+      const cancellation = new GeminiLiveConnectionError(
+        'Assistant connection was cancelled.',
+        'network',
       );
-      terminateSocket();
+      if (pendingBinding) closeBinding(pendingBinding, cancellation);
+      if (activeBinding) closeBinding(activeBinding, cancellation);
+      connected = false;
     },
 
-    sendText(text: string): void {
-      if (!socket || !connected) return;
-      socket.send(
-        JSON.stringify({
-          clientContent: {
-            turns: [
-              {
-                role: 'user',
-                parts: [{ text }],
-              },
-            ],
-            turnComplete: true,
-          },
-        }),
-      );
+    sendText(text: string): boolean {
+      if (!activeBinding || !connected) return false;
+      try {
+        const accepted = activeBinding.socket.send(
+          JSON.stringify({
+            clientContent: {
+              turns: [
+                {
+                  role: 'user',
+                  parts: [{ text }],
+                },
+              ],
+              turnComplete: true,
+            },
+          }),
+        ) as unknown;
+        return accepted !== false;
+      } catch {
+        return false;
+      }
     },
 
-    sendAudio(data: string, mimeType = 'audio/pcm;rate=16000'): void {
-      if (!socket || !connected) return;
-      socket.send(
-        JSON.stringify({
-          realtimeInput: {
-            audio: { mimeType, data },
-          },
-        }),
-      );
+    sendAudio(data: string, mimeType = 'audio/pcm;rate=16000'): boolean {
+      if (!activeBinding || !connected) return false;
+      try {
+        const accepted = activeBinding.socket.send(
+          JSON.stringify({
+            realtimeInput: {
+              audio: { mimeType, data },
+            },
+          }),
+        ) as unknown;
+        return accepted !== false;
+      } catch {
+        return false;
+      }
     },
 
     sendToolResponse(response: LiveToolResponse): boolean {
-      if (!socket || !connected) return false;
+      if (!activeBinding || !connected) return false;
       try {
-        socket.send(
+        activeBinding.socket.send(
           JSON.stringify({
             toolResponse: {
               functionResponses: [
@@ -576,7 +660,7 @@ export function createGeminiLiveClient(
     },
 
     isConnected(): boolean {
-      return connected && socket !== undefined;
+      return connected && activeBinding !== undefined;
     },
   };
 }
