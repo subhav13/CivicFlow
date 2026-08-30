@@ -327,7 +327,9 @@ describe('Phase 5 local assistant integration matrix', () => {
         status: 'succeeded',
         summary: 'Added income from Acme Health',
       });
-      expect(screen.getByText('Added income from Acme Health')).toBeVisible();
+      expect(screen.getByTestId('assistant-latest-summary')).toHaveTextContent(
+        'Added income from Acme Health',
+      );
       expect(harness.store.getState().ui.activeOperation).toMatchObject({
         actionId: firstResult.actionId,
         phase: 'succeeded',

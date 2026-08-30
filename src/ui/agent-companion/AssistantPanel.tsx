@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from 'react';
 
 import type {
   AssistantController,
@@ -16,6 +22,7 @@ import type { SessionState } from '../../assistant/session-state';
 import type { OperationState } from '../../application/operation-feedback';
 import { AssistantComposer } from './AssistantComposer';
 import { AssistantStatus } from './AssistantStatus';
+import { FIRST_RUN_PROMPTS } from '../onboarding/FirstRunGuide';
 import {
   ConversationTimeline,
   type TimelineMessage,
@@ -34,6 +41,15 @@ export interface AssistantPanelProps {
   speechOutput?: SpeechOutputService;
   activeOperation?: OperationState | null;
   renderConfirmation?: boolean;
+  onControllerEvent?: (event: AssistantControllerEvent) => void;
+  initialMode?: AssistantMode;
+  onListeningChange?: (isListening: boolean) => void;
+}
+
+export type AssistantMode = 'unselected' | 'chat' | 'voice';
+
+export interface AssistantPanelHandle {
+  stopListening(): void;
 }
 
 let msgCounter = 0;
@@ -48,33 +64,23 @@ const CORRECTION_PROMPT =
   'Tell me what needs to change. I will show the updated draft for review before anything is applied.';
 const handledFailureEvents = new WeakSet<object>();
 
-function isAssistantPanelVisible(element: HTMLElement | null): boolean {
-  if (!element || typeof window === 'undefined') return true;
-  if (typeof window.getComputedStyle !== 'function') return true;
-
-  let current: HTMLElement | null = element;
-  while (current) {
-    const style = window.getComputedStyle(current);
-    if (
-      style.display === 'none' ||
-      style.visibility === 'hidden' ||
-      style.visibility === 'collapse'
-    ) {
-      return false;
-    }
-    current = current.parentElement;
-  }
-  return true;
-}
-
-export function AssistantPanel({
-  controller = null,
-  enabled = true,
-  onReadCurrentSection,
-  speechOutput,
-  activeOperation = null,
-  renderConfirmation = true,
-}: AssistantPanelProps) {
+export const AssistantPanel = forwardRef<
+  AssistantPanelHandle,
+  AssistantPanelProps
+>(function AssistantPanel(
+  {
+    controller = null,
+    enabled = true,
+    onReadCurrentSection,
+    speechOutput,
+    activeOperation = null,
+    renderConfirmation = true,
+    onControllerEvent,
+    initialMode = 'chat',
+    onListeningChange,
+  },
+  ref,
+) {
   const activeSpeechOutput = speechOutput ?? browserSpeechOutput;
 
   const [sessionState, setSessionState] = useState<SessionState>(() =>
@@ -84,8 +90,12 @@ export function AssistantPanel({
   const [isListening, setIsListening] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speakerMuted, setSpeakerMuted] = useState(false);
   const [speechAloud, setSpeechAloud] = useState(false);
   const [speechRate, setSpeechRate] = useState(1);
+  const [assistantMode, setAssistantMode] =
+    useState<AssistantMode>(initialMode);
+  const [composerText, setComposerText] = useState('');
   const [latestAssistantText, setLatestAssistantText] = useState<string>('');
   const [pendingConfirmation, setPendingConfirmation] =
     useState<PendingToolConfirmation | null>(null);
@@ -97,8 +107,14 @@ export function AssistantPanel({
   speechAloudRef.current = speechAloud;
   const speechRateRef = useRef(speechRate);
   speechRateRef.current = speechRate;
+  const speakerMutedRef = useRef(speakerMuted);
+  speakerMutedRef.current = speakerMuted;
   const activeSpeechOutputRef = useRef(activeSpeechOutput);
   activeSpeechOutputRef.current = activeSpeechOutput;
+  const onControllerEventRef = useRef(onControllerEvent);
+  onControllerEventRef.current = onControllerEvent;
+  const onListeningChangeRef = useRef(onListeningChange);
+  onListeningChangeRef.current = onListeningChange;
   const isSessionAvailable = enabled && controller !== null;
   const isConnected = isSessionAvailable && sessionState.status === 'connected';
   const isLiveActive =
@@ -112,7 +128,7 @@ export function AssistantPanel({
         controller.disconnect();
       }
       controller.stopMicrophone();
-      setIsListening(false);
+      updateListening(false);
       setIsThinking(false);
       setIsSpeaking(false);
       setPendingConfirmation(null);
@@ -205,7 +221,7 @@ export function AssistantPanel({
       });
       if (committed.assistantText) {
         setLatestAssistantText(committed.assistantText);
-        if (speechAloudRef.current) {
+        if (!speakerMutedRef.current && speechAloudRef.current) {
           activeSpeechOutputRef.current.speak(
             committed.assistantText,
             speechRateRef.current,
@@ -217,12 +233,13 @@ export function AssistantPanel({
 
     const unsubscribe = controller.subscribe(
       (event: AssistantControllerEvent) => {
+        onControllerEventRef.current?.(event);
         switch (event.type) {
           case 'state':
             setSessionState(event.state);
             if (event.state.status !== 'connected') {
               resetLiveTurn();
-              setIsListening(false);
+              updateListening(false);
               setIsThinking(false);
               setIsSpeaking(false);
               setPendingConfirmation(null);
@@ -231,7 +248,7 @@ export function AssistantPanel({
             break;
           case 'error':
             resetLiveTurn();
-            setIsListening(false);
+            updateListening(false);
             setIsThinking(false);
             setIsSpeaking(false);
             setPendingConfirmation(null);
@@ -248,7 +265,7 @@ export function AssistantPanel({
           }
 
           case 'audio':
-            setIsSpeaking(true);
+            setIsSpeaking(!speakerMutedRef.current);
             setIsThinking(false);
             break;
 
@@ -318,7 +335,6 @@ export function AssistantPanel({
           }
 
           case 'failed': {
-            if (!isAssistantPanelVisible(panelRef.current)) break;
             if (handledFailureEvents.has(event)) break;
             handledFailureEvents.add(event);
             const failureMessage = `I couldn't apply that change: ${event.message}`;
@@ -355,8 +371,44 @@ export function AssistantPanel({
       activeSpeechOutputRef.current.cancel();
     };
   }, [controller]);
+
+  const updateListening = (next: boolean) => {
+    setIsListening(next);
+    onListeningChangeRef.current?.(next);
+  };
+
+  const ensureConnected = async (): Promise<boolean> => {
+    if (!controller || !enabled) return false;
+    if (controller.getState().status !== 'connected') {
+      await controller.connect();
+    }
+    return controller.getState().status === 'connected';
+  };
+
+  const handleStopListening = () => {
+    controller?.stopMicrophone();
+    updateListening(false);
+  };
+
+  useImperativeHandle(ref, () => ({ stopListening: handleStopListening }));
+
+  const handleSelectChat = async () => {
+    setAssistantMode('chat');
+    await ensureConnected();
+  };
+
+  const handleSelectVoice = async () => {
+    setAssistantMode('voice');
+    if (!(await ensureConnected())) return;
+    updateListening(true);
+    await controller?.startMicrophone();
+  };
+
   const handleSendText = (text: string) => {
     if (!controller || !isConnected) return;
+    if (assistantMode === 'unselected') {
+      setAssistantMode('chat');
+    }
     setIsThinking(true);
     setIsSpeaking(false);
     setMessages((prev) => [
@@ -373,10 +425,9 @@ export function AssistantPanel({
   const handleToggleListening = async () => {
     if (!controller || !isConnected) return;
     if (isListening) {
-      controller.stopMicrophone();
-      setIsListening(false);
+      handleStopListening();
     } else {
-      setIsListening(true);
+      updateListening(true);
       await controller.startMicrophone();
     }
   };
@@ -417,15 +468,25 @@ export function AssistantPanel({
   };
 
   const handleRepeatSpeech = () => {
-    if (latestAssistantText) {
+    if (!speakerMuted && latestAssistantText) {
       activeSpeechOutput.speak(latestAssistantText, speechRate);
     }
   };
 
   const handleSpeakSlower = () => {
     setSpeechRate(0.75);
-    if (latestAssistantText) {
+    if (!speakerMuted && latestAssistantText) {
       activeSpeechOutput.speak(latestAssistantText, 0.75);
+    }
+  };
+
+  const handleToggleSpeakerMuted = () => {
+    const nextMuted = !speakerMuted;
+    setSpeakerMuted(nextMuted);
+    controller?.setSpeakerMuted?.(nextMuted);
+    if (nextMuted) {
+      setIsSpeaking(false);
+      activeSpeechOutputRef.current.cancel();
     }
   };
 
@@ -433,6 +494,7 @@ export function AssistantPanel({
     liveTurnAssemblerRef.current.reset();
     setMessages([]);
     setLatestAssistantText('');
+    setComposerText('');
     activeSpeechOutput.cancel();
   };
 
@@ -443,8 +505,7 @@ export function AssistantPanel({
       sessionState.status === 'connecting'
     ) {
       controller.disconnect();
-      controller.stopMicrophone();
-      setIsListening(false);
+      handleStopListening();
       setIsThinking(false);
       setIsSpeaking(false);
       setPendingConfirmation(null);
@@ -453,6 +514,12 @@ export function AssistantPanel({
       await controller.connect();
     }
   };
+
+  const showWelcomeChoice =
+    assistantMode === 'unselected' && isSessionAvailable;
+  const composerDisabled =
+    !isSessionAvailable || (!isConnected && assistantMode !== 'unselected');
+  const composerSendDisabled = !isConnected;
 
   return (
     <section
@@ -472,26 +539,28 @@ export function AssistantPanel({
             Clear conversation
           </button>
         </div>
-        <div className="assistant-live-switch-row">
-          <button
-            className="assistant-live-switch"
-            type="button"
-            role="switch"
-            aria-label="Live voice assistant"
-            aria-checked={isLiveActive}
-            onClick={() => void handleToggleLive()}
-            disabled={!isSessionAvailable}
-          >
-            <span
-              className="assistant-live-switch-control"
-              aria-hidden="true"
-            />
-            <span className="assistant-live-switch-text">
-              Live Voice Assistant
-            </span>
-          </button>
-          <span className="assistant-live-badge">Free Tier</span>
-        </div>
+        {!showWelcomeChoice ? (
+          <div className="assistant-live-switch-row">
+            <button
+              className="assistant-live-switch"
+              type="button"
+              role="switch"
+              aria-label="Live voice assistant"
+              aria-checked={isLiveActive}
+              onClick={() => void handleToggleLive()}
+              disabled={!isSessionAvailable}
+            >
+              <span
+                className="assistant-live-switch-control"
+                aria-hidden="true"
+              />
+              <span className="assistant-live-switch-text">
+                Live Voice Assistant
+              </span>
+            </button>
+            <span className="assistant-live-badge">Free Tier</span>
+          </div>
+        ) : null}
         <AssistantStatus
           status={sessionState.status}
           enabled={isSessionAvailable}
@@ -505,7 +574,51 @@ export function AssistantPanel({
           isApplying={activeOperation?.phase === 'applying'}
         />
       </div>
+      {showWelcomeChoice ? (
+        <div
+          className="assistant-welcome-choice"
+          role="group"
+          aria-label="Choose how to use the assistant"
+        >
+          <div>
+            <strong>How would you like to work?</strong>
+            <p>
+              Choose voice for hands-free help or keep the conversation in chat.
+            </p>
+          </div>
+          <div className="assistant-welcome-actions">
+            <button type="button" onClick={() => void handleSelectVoice()}>
+              Start voice
+            </button>
+            <button type="button" onClick={() => void handleSelectChat()}>
+              Continue with chat
+            </button>
+          </div>
+        </div>
+      ) : null}
       <ConversationTimeline messages={messages} />
+
+      {isConnected && messages.length === 0 ? (
+        <div
+          className="assistant-suggestions"
+          data-testid="assistant-suggestions"
+          aria-label="Suggested prompts"
+        >
+          <span className="assistant-suggestions-label">Try a suggestion</span>
+          <div className="assistant-suggestions-list">
+            {FIRST_RUN_PROMPTS.map((prompt) => (
+              <button
+                key={prompt.id}
+                type="button"
+                className="assistant-suggestion-button"
+                onClick={() => setComposerText(prompt.promptText)}
+              >
+                {prompt.title}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {pendingConfirmation && renderConfirmation ? (
         <ToolConfirmationCard
@@ -519,16 +632,24 @@ export function AssistantPanel({
       <VoiceControls
         isListening={isListening}
         disabled={!isConnected}
+        speakerMuted={speakerMuted}
         speechAloud={speechAloud}
         hasAssistantResponse={Boolean(latestAssistantText)}
         onToggleListening={handleToggleListening}
+        onToggleSpeakerMuted={handleToggleSpeakerMuted}
         onReadCurrentSection={handleReadCurrentSection}
         onToggleSpeechAloud={setSpeechAloud}
         onRepeatSpeech={handleRepeatSpeech}
         onSpeakSlower={handleSpeakSlower}
       />
 
-      <AssistantComposer onSend={handleSendText} disabled={!isConnected} />
+      <AssistantComposer
+        value={composerText}
+        onValueChange={setComposerText}
+        onSend={handleSendText}
+        disabled={composerDisabled}
+        sendDisabled={composerSendDisabled}
+      />
     </section>
   );
-}
+});

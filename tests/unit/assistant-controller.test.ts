@@ -131,6 +131,20 @@ describe('assistant controller lifecycle', () => {
     );
   });
 
+  it('mutes speaker output without stopping microphone capture or disconnecting', async () => {
+    const harness = createHarness();
+    const setMuted = vi.fn();
+    harness.audioOutput.setMuted = setMuted;
+    await connect(harness);
+    await harness.controller.startMicrophone();
+
+    harness.controller.setSpeakerMuted(true);
+
+    expect(setMuted).toHaveBeenCalledWith(true);
+    expect(harness.stream.track.stop).not.toHaveBeenCalled();
+    expect(harness.client.disconnect).not.toHaveBeenCalled();
+  });
+
   it('stops tracks and removes the stream listener when microphone capture stops', async () => {
     const harness = createHarness();
     await connect(harness);

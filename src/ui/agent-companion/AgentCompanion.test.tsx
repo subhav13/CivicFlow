@@ -51,11 +51,16 @@ describe('AgentCompanion Component (Packet 2.3)', () => {
     },
   ];
 
-  function makeController() {
+  function makeController(
+    initialState: SessionState = { status: 'connected' },
+  ) {
     const listeners = new Set<(event: AssistantControllerEvent) => void>();
-    let state: SessionState = { status: 'connected' };
+    let subscribeCount = 0;
+    let state: SessionState = initialState;
     const controller = {
-      connect: vi.fn(async () => {}),
+      connect: vi.fn(async () => {
+        state = { status: 'connected' };
+      }),
       retry: vi.fn(async () => {}),
       disconnect: vi.fn(),
       startMicrophone: vi.fn(async () => {}),
@@ -67,8 +72,12 @@ describe('AgentCompanion Component (Packet 2.3)', () => {
       dispose: vi.fn(),
       getState: () => state,
       subscribe: (listener: (event: AssistantControllerEvent) => void) => {
+        subscribeCount += 1;
         listeners.add(listener);
         return () => listeners.delete(listener);
+      },
+      get subscribeCount() {
+        return subscribeCount;
       },
       emit: (event: AssistantControllerEvent) => {
         if (event.type === 'state') state = event.state;
@@ -77,6 +86,164 @@ describe('AgentCompanion Component (Packet 2.3)', () => {
     };
     return controller;
   }
+
+  it('keeps one long-lived panel and one controller subscription across presentation toggles', () => {
+    const controller = makeController();
+    const { rerender } = render(
+      <AgentCompanion
+        capabilities={[]}
+        assistantController={controller as unknown as AssistantController}
+        assistantEnabled
+        isOpen={false}
+        onClose={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+
+    expect(controller.subscribeCount).toBe(1);
+    expect(document.querySelectorAll('.assistant-panel')).toHaveLength(1);
+
+    act(() => {
+      controller.emit({
+        type: 'text',
+        text: 'A remembered assistant response.',
+      });
+    });
+    expect(
+      screen.getByText('A remembered assistant response.'),
+    ).toBeInTheDocument();
+
+    rerender(
+      <AgentCompanion
+        capabilities={[]}
+        assistantController={controller as unknown as AssistantController}
+        assistantEnabled
+        isOpen
+        onClose={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+
+    expect(controller.subscribeCount).toBe(1);
+    expect(document.querySelectorAll('.assistant-panel')).toHaveLength(1);
+    expect(
+      screen.getByText('A remembered assistant response.'),
+    ).toBeInTheDocument();
+  });
+
+  it('exposes one floating launcher with truthful open state semantics', () => {
+    const onOpen = vi.fn();
+    render(
+      <AgentCompanion
+        capabilities={[]}
+        isOpen={false}
+        onClose={() => {}}
+        onOpen={onOpen}
+      />,
+    );
+
+    const launcher = screen.getByTestId('assistant-launcher');
+    expect(launcher).toHaveClass('assistant-launcher');
+    expect(launcher).toHaveAttribute('aria-expanded', 'false');
+    expect(launcher).toHaveAttribute('aria-controls', 'agent-companion-dialog');
+    fireEvent.click(launcher);
+    expect(onOpen).toHaveBeenCalledOnce();
+  });
+
+  it('offers an explicit chat or voice choice when the assistant is first opened', () => {
+    const controller = makeController();
+    render(
+      <AgentCompanion
+        capabilities={[]}
+        assistantController={controller as unknown as AssistantController}
+        assistantEnabled
+        isOpen
+        onClose={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'Start voice' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Continue with chat' }),
+    ).toBeInTheDocument();
+    expect(controller.startMicrophone).not.toHaveBeenCalled();
+  });
+
+  it('connects chat without opening the microphone after the user chooses chat', async () => {
+    const controller = makeController({ status: 'idle' });
+    render(
+      <AgentCompanion
+        capabilities={[]}
+        assistantController={controller as unknown as AssistantController}
+        assistantEnabled
+        isOpen
+        onClose={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue with chat' }));
+    await waitFor(() => expect(controller.connect).toHaveBeenCalledOnce());
+    expect(controller.startMicrophone).not.toHaveBeenCalled();
+  });
+
+  it('connects voice and requests the microphone only after the voice choice', async () => {
+    const controller = makeController({ status: 'idle' });
+    render(
+      <AgentCompanion
+        capabilities={[]}
+        assistantController={controller as unknown as AssistantController}
+        assistantEnabled
+        isOpen
+        onClose={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start voice' }));
+    await waitFor(() => expect(controller.connect).toHaveBeenCalledOnce());
+    await waitFor(() =>
+      expect(controller.startMicrophone).toHaveBeenCalledOnce(),
+    );
+  });
+
+  it('keeps a listening stop action available when the assistant is minimized', async () => {
+    const controller = makeController();
+    const { rerender } = render(
+      <AgentCompanion
+        capabilities={[]}
+        assistantController={controller as unknown as AssistantController}
+        assistantEnabled
+        isOpen
+        onClose={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start voice' }));
+    await waitFor(() => {
+      expect(controller.startMicrophone).toHaveBeenCalledOnce();
+    });
+
+    rerender(
+      <AgentCompanion
+        capabilities={[]}
+        assistantController={controller as unknown as AssistantController}
+        assistantEnabled
+        isOpen={false}
+        onClose={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+
+    const stopButton = screen.getByTestId('assistant-minimized-stop');
+    expect(stopButton).toBeInTheDocument();
+    fireEvent.click(stopButton);
+    expect(controller.stopMicrophone).toHaveBeenCalledOnce();
+  });
 
   it('renders latest activity BEFORE capabilities in accessible DOM order', () => {
     render(
@@ -152,6 +319,27 @@ describe('AgentCompanion Component (Packet 2.3)', () => {
     // Full activity list or disclosure
     expect(screen.getByText(/all activity/i)).toBeInTheDocument();
     expect(screen.getByText('Navigated to Income section')).toBeInTheDocument();
+  });
+
+  it('keeps activity and tools closed until the user asks to see them', () => {
+    render(
+      <AgentCompanion
+        capabilities={sampleCapabilities}
+        activity={sampleActivity}
+        isOpen
+        onClose={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+
+    const disclosure = document.querySelector(
+      'details.companion-support-disclosure',
+    );
+    expect(disclosure).not.toBeNull();
+    expect(disclosure).not.toHaveAttribute('open');
+
+    fireEvent.click(screen.getByText('Activity & tools'));
+    expect(disclosure).toHaveAttribute('open');
   });
 
   it('renders available capabilities dynamically from props', () => {
@@ -661,7 +849,7 @@ describe('AgentCompanion Component (Packet 2.3)', () => {
     });
   });
 
-  it('routes a failure to the visible companion panel when the desktop panel is hidden', () => {
+  it('routes a failure to the single long-lived companion panel', () => {
     const controller = makeController();
     render(
       <AgentCompanion
@@ -677,8 +865,7 @@ describe('AgentCompanion Component (Packet 2.3)', () => {
     const panels = Array.from(
       document.querySelectorAll<HTMLElement>('.assistant-panel'),
     );
-    expect(panels).toHaveLength(2);
-    panels[0]!.style.display = 'none';
+    expect(panels).toHaveLength(1);
 
     act(() => {
       controller.emit({
@@ -690,7 +877,7 @@ describe('AgentCompanion Component (Packet 2.3)', () => {
     });
 
     expect(
-      within(panels[1]!).getByText(
+      within(panels[0]!).getByText(
         /I couldn't apply that change: Coverage could not be updated\./,
       ),
     ).toBeInTheDocument();

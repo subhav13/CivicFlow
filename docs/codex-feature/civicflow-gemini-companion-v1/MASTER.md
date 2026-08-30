@@ -1,5 +1,12 @@
 # CivicFlow Gemini Live companion v1 — master ledger
 
+> **2026-08-30 presentation cross-reference:**
+> [Assistant UI refresh v1](../civicflow-assistant-ui-refresh-v1/MASTER.md)
+> explicitly reopens the permanent-panel presentation and defines a floating
+> assistant surface, minimized same-page voice continuity, and true speaker
+> muting. This does not change accepted provider, WebMCP, confirmation, privacy,
+> cleanup, or human-only submission contracts.
+
 ## Ledger metadata
 
 - **Feature:** CivicFlow Gemini Live text and voice companion

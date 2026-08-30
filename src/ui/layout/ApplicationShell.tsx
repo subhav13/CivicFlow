@@ -18,7 +18,6 @@ import {
 import { ApplicationProgressTracker } from '../progress/ApplicationProgressTracker';
 import { OperationStatus } from '../feedback/OperationStatus';
 import { AgentChangeToast } from '../feedback/AgentChangeToast';
-import { FirstRunGuide } from '../onboarding/FirstRunGuide';
 interface ApplicationShellProps {
   activeSection: SectionId;
   capabilities: readonly CapabilitySummary[];
@@ -118,10 +117,6 @@ export function ApplicationShell({
         activeSection={activeSection}
         onDismiss={onDismissOperation}
       />
-      <FirstRunGuide
-        isOpen={guideOpen ?? false}
-        onDismiss={onDismissGuide ?? (() => {})}
-      />
       <div className="workspace-grid">
         <SectionStepper
           activeSection={activeSection}
@@ -182,19 +177,21 @@ export function ApplicationShell({
             ) : null}
           </div>
         </main>
-        <AgentCompanion
-          capabilities={capabilities}
-          activity={activity}
-          assistantController={assistantController}
-          assistantEnabled={assistantEnabled}
-          onReadCurrentSection={onReadCurrentSection}
-          speechOutput={speechOutput}
-          activeOperation={activeOperation}
-          isOpen={companionOpen}
-          onClose={onCloseCompanion}
-          onOpen={onOpenCompanion}
-        />
       </div>
+      <AgentCompanion
+        capabilities={capabilities}
+        activity={activity}
+        assistantController={assistantController}
+        assistantEnabled={assistantEnabled}
+        onReadCurrentSection={onReadCurrentSection}
+        speechOutput={speechOutput}
+        activeOperation={activeOperation}
+        isOpen={companionOpen}
+        onClose={onCloseCompanion}
+        onOpen={onOpenCompanion}
+        guideOpen={guideOpen}
+        onDismissGuide={onDismissGuide}
+      />
     </div>
   );
 }

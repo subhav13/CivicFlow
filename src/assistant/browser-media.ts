@@ -253,6 +253,7 @@ export function createBrowserAudioOutput(
   let audioCtx: AudioContext | undefined;
   const activeSources = new Set<AudioBufferSourceNode>();
   let nextPlayTime = 0;
+  let isMuted = false;
 
   const getOrCreateContext = (): AudioContext | undefined => {
     if (!audioCtx && AudioContextClass) {
@@ -268,8 +269,31 @@ export function createBrowserAudioOutput(
     return audioCtx;
   };
 
+  const stopOutput = (): void => {
+    for (const source of activeSources) {
+      try {
+        source.onended = null;
+        source.stop();
+        source.disconnect();
+      } catch {
+        // Safe teardown
+      }
+    }
+    activeSources.clear();
+    nextPlayTime = 0;
+    if (audioCtx) {
+      try {
+        void audioCtx.close();
+      } catch {
+        // Safe teardown
+      }
+      audioCtx = undefined;
+    }
+  };
+
   return {
     play(data: string, mimeType: string): void {
+      if (isMuted) return;
       const ctx = getOrCreateContext();
       if (!ctx || !data) return;
 
@@ -313,25 +337,12 @@ export function createBrowserAudioOutput(
       }
     },
 
-    stop(): void {
-      for (const source of activeSources) {
-        try {
-          source.onended = null;
-          source.stop();
-          source.disconnect();
-        } catch {
-          // Safe teardown
-        }
-      }
-      activeSources.clear();
-      nextPlayTime = 0;
-      if (audioCtx) {
-        try {
-          void audioCtx.close();
-        } catch {
-          // Safe teardown
-        }
-        audioCtx = undefined;
+    stop: stopOutput,
+
+    setMuted(muted: boolean): void {
+      isMuted = muted;
+      if (muted) {
+        stopOutput();
       }
     },
   };

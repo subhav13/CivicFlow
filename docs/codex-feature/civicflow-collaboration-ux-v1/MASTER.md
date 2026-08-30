@@ -1,5 +1,11 @@
 # CivicFlow visible collaboration UX v1 — master ledger
 
+> **2026-08-30 presentation cross-reference:**
+> [Assistant UI refresh v1](../civicflow-assistant-ui-refresh-v1/MASTER.md)
+> supersedes the expanded first-run guide and permanent companion-space
+> presentation choices. Validated activity, operation, progress, recovery,
+> persistence, and historical phase evidence remain authoritative.
+
 ## Ledger metadata
 
 - **Feature:** CivicFlow visible collaboration, guidance, recovery, and trust UX

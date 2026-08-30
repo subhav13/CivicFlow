@@ -6,8 +6,20 @@ test.describe('Phase 4 unified assistant companion', () => {
   }) => {
     await page.goto('/');
 
-    const panel = page.getByRole('region', { name: /assistant panel/i });
+    await page.getByTestId('assistant-launcher').click();
+    const dialog = page.getByRole('dialog', { name: /agent companion/i });
+    const panel = dialog.getByRole('region', { name: /assistant panel/i });
     await expect(panel).toBeVisible();
+    const dialogBox = await dialog.boundingBox();
+    const launcherBox = await page
+      .getByTestId('assistant-launcher')
+      .boundingBox();
+    expect(dialogBox).not.toBeNull();
+    expect(launcherBox).not.toBeNull();
+    expect(dialogBox!.height).toBeGreaterThan(300);
+    expect(dialogBox!.y + dialogBox!.height).toBeLessThanOrEqual(
+      launcherBox!.y,
+    );
     await expect(
       panel.getByText(
         /text-only mode|secure assistant session is unavailable/i,

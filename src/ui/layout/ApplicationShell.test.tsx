@@ -67,6 +67,25 @@ describe('CivicFlow application shell', () => {
     ).toHaveFocus();
   });
 
+  it('uses a compact coachmark instead of the large first-run guide', () => {
+    render(<App />);
+
+    expect(screen.queryByTestId('first-run-guide')).toBeNull();
+    expect(screen.getByTestId('assistant-coachmark')).toHaveTextContent(
+      /try the assistant/i,
+    );
+  });
+
+  it('keeps the assistant launcher outside the application workspace columns', () => {
+    render(<App />);
+
+    const workspace = document.querySelector('.workspace-grid');
+    expect(workspace).not.toBeNull();
+    expect(workspace?.querySelector('.assistant-companion-host')).toBeNull();
+    expect(workspace?.children).toHaveLength(2);
+    expect(screen.getByTestId('assistant-launcher')).toBeInTheDocument();
+  });
+
   it('traverses each section with its visible next control', () => {
     render(<App />);
 

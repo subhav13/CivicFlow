@@ -342,8 +342,15 @@ test.describe('Adversarial, Resilience, and Accessibility Gates (Packet 3.2)', (
       page.getByRole('navigation', { name: 'Application sections' }),
     ).toBeVisible();
     await expect(
-      page.getByRole('complementary', { name: 'Agent Companion' }),
+      page.getByRole('button', { name: 'Open Agent Companion' }),
     ).toBeVisible();
+
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.getByRole('button', { name: 'Open Agent Companion' }).click();
+    const companionDialog = page.getByRole('dialog', {
+      name: 'Agent Companion',
+    });
+    await expect(companionDialog).toBeVisible();
 
     // 2. Heading hierarchy: H1 present, H2 for main section & companion
     const h1 = page.getByRole('heading', { level: 1 });
@@ -358,15 +365,8 @@ test.describe('Adversarial, Resilience, and Accessibility Gates (Packet 3.2)', (
     const lastName = page.getByLabel('Last name');
     await expect(lastName).toBeVisible();
 
-    // 4. Companion mobile modal dialog ARIA semantics and Escape handling
-    await page.setViewportSize({ width: 375, height: 812 });
-    await page.getByRole('button', { name: 'Open Agent Companion' }).click();
-
-    const companionDialog = page.getByRole('dialog', {
-      name: 'Agent Companion',
-    });
-    await expect(companionDialog).toBeVisible();
-    await expect(companionDialog).toHaveAttribute('aria-modal', 'true');
+    // 4. Companion floating dialog ARIA semantics and Escape handling
+    await expect(companionDialog).not.toHaveAttribute('aria-modal', 'true');
 
     // Escape dismisses dialog
     await page.keyboard.press('Escape');

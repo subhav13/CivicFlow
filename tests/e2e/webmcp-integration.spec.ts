@@ -54,11 +54,13 @@ test.describe.serial('WebMCP real-browser golden journey (Packet 3.1)', () => {
       'set_current_coverage',
     ]);
 
-    // Capability panel reflects active WebMCP integration
-    await expect(page.getByText('WebMCP Active')).toBeVisible();
-    await expect(
-      page.getByText('7 Site Tools currently available.'),
-    ).toBeVisible();
+    // The floating companion reflects active WebMCP integration when opened.
+    await page.getByRole('button', { name: 'Open Agent Companion' }).click();
+    const companionDialog = page.getByRole('dialog', {
+      name: 'Agent Companion',
+    });
+    await expect(companionDialog.getByText('WebMCP Active')).toBeVisible();
+    await expect(companionDialog.getByText('7 tools')).toBeVisible();
   });
 
   test('2. the human seed renders before any model tool executes', async () => {
@@ -98,6 +100,7 @@ test.describe.serial('WebMCP real-browser golden journey (Packet 3.1)', () => {
     await expect(page.getByText('Daughter · age 7')).toBeVisible();
 
     // Attribution recorded in Agent Companion activity stream
+    await page.getByText('Activity & tools').click();
     await expect(page.getByText('Agent action').first()).toBeVisible();
   });
 

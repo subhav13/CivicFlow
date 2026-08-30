@@ -116,6 +116,8 @@ test.describe('Collaboration Feedback and Startup Motion', () => {
     await expect(operationStatus).toHaveAttribute('data-phase', 'succeeded');
     const actionId = await operationStatus.getAttribute('data-action-id');
     expect(actionId).toBeTruthy();
+    await page.getByRole('button', { name: 'Open Agent Companion' }).click();
+    await page.getByText('Activity & tools').click();
     await expect(
       page.locator(`[data-activity-id="${actionId}"]`),
     ).toBeVisible();
@@ -131,6 +133,8 @@ test.describe('Collaboration Feedback and Startup Motion', () => {
     expect(retained).not.toContain('applyingForCoverage');
 
     await page.reload();
+    await page.getByRole('button', { name: 'Open Agent Companion' }).click();
+    await page.getByText('Activity & tools').click();
     await expect(
       page.locator(`[data-activity-id="${actionId}"]`),
     ).toBeVisible();

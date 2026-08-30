@@ -27,6 +27,7 @@ class FakeAssistantController {
   });
   readonly startMicrophone = vi.fn(async () => {});
   readonly stopMicrophone = vi.fn();
+  readonly setSpeakerMuted = vi.fn();
   readonly sendText = vi.fn();
   readonly confirmToolCall = vi.fn(async () => {});
   readonly requestRevision = vi.fn(() => true);
@@ -100,6 +101,70 @@ describe('Phase 4 unified assistant panel', () => {
 
     expect(controller.sendText).toHaveBeenCalledWith('What is my progress?');
     expect(screen.getByText('What is my progress?')).toBeInTheDocument();
+  });
+
+  it('stages an empty-chat suggestion without sending or executing it', () => {
+    const controller = renderPanel();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Review missing items' }),
+    );
+
+    expect(
+      screen.getByRole('textbox', { name: /message the assistant/i }),
+    ).toHaveValue(
+      'Review my application, identify any missing items or blockers, and show me what needs attention.',
+    );
+    expect(controller.sendText).not.toHaveBeenCalled();
+  });
+
+  it('keeps the composer editable before the first chat or voice choice without enabling send', () => {
+    const controller = new FakeAssistantController({ status: 'idle' });
+    render(
+      <AssistantPanel
+        controller={controller as unknown as AssistantController}
+        enabled
+        initialMode="unselected"
+      />,
+    );
+
+    const composer = screen.getByRole('textbox', {
+      name: /message the assistant/i,
+    });
+    fireEvent.change(composer, { target: { value: 'Draft this question' } });
+
+    expect(composer).toHaveValue('Draft this question');
+    expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
+    expect(controller.sendText).not.toHaveBeenCalled();
+  });
+
+  it('exposes an independent speaker mute control for provider and browser speech', () => {
+    const speechOutput = { speak: vi.fn(), cancel: vi.fn() };
+    const controller = renderPanel(new FakeAssistantController(), {
+      speechOutput,
+    });
+
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: /read assistant responses aloud/i }),
+    );
+    const muteButton = screen.getByRole('button', { name: /mute speaker/i });
+    expect(muteButton).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(muteButton);
+
+    expect(controller.setSpeakerMuted).toHaveBeenCalledWith(true);
+    expect(speechOutput.cancel).toHaveBeenCalled();
+    expect(
+      screen.getByRole('button', { name: /turn speaker on/i }),
+    ).toHaveAttribute('aria-pressed', 'true');
+
+    act(() => {
+      controller.emit({ type: 'text', text: 'Muted response.' });
+      controller.emit({ type: 'turn_complete' });
+    });
+    expect(speechOutput.speak).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /turn speaker on/i }));
+    expect(controller.setSpeakerMuted).toHaveBeenLastCalledWith(false);
   });
 
   it('renders interim/final transcript and assistant text in the shared timeline', () => {

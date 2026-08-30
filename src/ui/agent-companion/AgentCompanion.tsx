@@ -10,7 +10,7 @@ import type {
   AssistantControllerEvent,
 } from '../../assistant/assistant-controller';
 import type { ConfirmationDraft } from '../../assistant/tool-confirmation-view-model';
-import { AssistantPanel } from './AssistantPanel';
+import { AssistantPanel, type AssistantPanelHandle } from './AssistantPanel';
 import { browserSpeechOutput, type SpeechOutputService } from './speech-output';
 import type { PendingToolConfirmation } from './ToolConfirmationCard';
 import { ToolConfirmationModal } from './ToolConfirmationModal';
@@ -26,6 +26,8 @@ export interface AgentCompanionProps {
   isOpen: boolean;
   onClose: () => void;
   onOpen: () => void;
+  guideOpen?: boolean;
+  onDismissGuide?: () => void;
 }
 
 const COMPACT_COMPANION_QUERY = '(max-width: 70rem)';
@@ -114,6 +116,12 @@ function CompanionContent({
   activeOperation,
   renderConfirmation = false,
   deliveryFailure,
+  onControllerEvent,
+  isOpen,
+  closeRef,
+  onClose,
+  panelRef,
+  onListeningChange,
 }: {
   capabilities: readonly CapabilitySummary[];
   activity?: readonly ActivityEntry[];
@@ -124,6 +132,12 @@ function CompanionContent({
   activeOperation?: OperationState | null;
   renderConfirmation?: boolean;
   deliveryFailure?: string | null;
+  onControllerEvent?: (event: AssistantControllerEvent) => void;
+  isOpen: boolean;
+  closeRef?: React.RefObject<HTMLButtonElement | null>;
+  onClose?: () => void;
+  panelRef?: React.RefObject<AssistantPanelHandle | null>;
+  onListeningChange?: (isListening: boolean) => void;
 }) {
   const latestActivity = activity[0];
   const statusSummary =
@@ -142,11 +156,24 @@ function CompanionContent({
       <div className="companion-heading">
         <div>
           <p className="eyebrow">Optional helper</p>
-          <h2>Agent Companion</h2>
+          <h2 id="agent-companion-dialog-heading">Agent Companion</h2>
         </div>
-        <span className="companion-badge">
-          {filteredCapabilities.length > 0 ? 'WebMCP Active' : 'Local'}
-        </span>
+        <div className="companion-heading-actions">
+          <span className="companion-badge">
+            {filteredCapabilities.length > 0 ? 'WebMCP Active' : 'Local'}
+          </span>
+          {isOpen && onClose ? (
+            <button
+              ref={closeRef}
+              type="button"
+              className="companion-close-button"
+              onClick={onClose}
+              aria-label="Close Agent Companion"
+            >
+              ×
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <AssistantPanel
@@ -156,6 +183,10 @@ function CompanionContent({
         speechOutput={speechOutput}
         activeOperation={activeOperation}
         renderConfirmation={renderConfirmation}
+        onControllerEvent={onControllerEvent}
+        initialMode="unselected"
+        ref={panelRef}
+        onListeningChange={onListeningChange}
       />
 
       {deliveryFailure ? (
@@ -183,85 +214,128 @@ function CompanionContent({
         {latestActivity ? `Latest action: ${latestActivity.summary}` : ''}
       </div>
 
-      {/* 1. Latest Activity Section — rendered before capabilities */}
-      <div className="companion-section companion-activity-section">
-        <h3 className="companion-section-title">Latest Activity</h3>
-        {latestActivity ? (
-          <div className="latest-activity-wrapper">
-            <ul
-              className="activity-list latest-activity-single"
-              aria-label="Latest action"
+      <details className="companion-support-disclosure">
+        <summary
+          className="companion-support-summary"
+          aria-label={`Activity & tools${latestActivity ? `. Latest action: ${latestActivity.summary}` : ''}`}
+        >
+          <span>Activity &amp; tools</span>
+          {latestActivity ? (
+            <span
+              className="companion-support-latest"
+              data-testid="assistant-latest-summary"
+              aria-hidden="true"
             >
-              <ActivityItemView entry={latestActivity} />
-            </ul>
+              {latestActivity.summary}
+            </span>
+          ) : null}
+          <span className="companion-support-count">
+            {activity.length > 0
+              ? `${activity.length} action${activity.length === 1 ? '' : 's'}`
+              : `${filteredCapabilities.length} tool${filteredCapabilities.length === 1 ? '' : 's'}`}
+          </span>
+        </summary>
 
-            {activity.length > 1 && (
-              <details className="companion-activity-details">
-                <summary className="activity-disclosure-summary">
-                  All Activity ({activity.length})
-                </summary>
+        <div className="companion-support-content">
+          <div className="companion-section companion-activity-section">
+            <h3 className="companion-section-title">Latest Activity</h3>
+            {latestActivity ? (
+              <div className="latest-activity-wrapper">
                 <ul
-                  className="activity-list activity-history-list"
-                  aria-label="Prior actions"
+                  className="activity-list latest-activity-single"
+                  aria-label="Latest action"
                 >
-                  {activity.slice(1, 20).map((entry) => (
-                    <ActivityItemView key={entry.id} entry={entry} />
-                  ))}
+                  <ActivityItemView entry={latestActivity} />
                 </ul>
-              </details>
+
+                {activity.length > 1 && (
+                  <details className="companion-activity-details">
+                    <summary className="activity-disclosure-summary">
+                      All Activity ({activity.length})
+                    </summary>
+                    <ul
+                      className="activity-list activity-history-list"
+                      aria-label="Prior actions"
+                    >
+                      {activity.slice(1, 20).map((entry) => (
+                        <ActivityItemView key={entry.id} entry={entry} />
+                      ))}
+                    </ul>
+                  </details>
+                )}
+              </div>
+            ) : (
+              <div className="companion-empty">
+                <span className="companion-empty-icon" aria-hidden="true">
+                  ◇
+                </span>
+                <p>No actions recorded yet.</p>
+                <small>
+                  Human and agent actions will appear here in real time.
+                </small>
+              </div>
             )}
           </div>
-        ) : (
-          <div className="companion-empty">
-            <span className="companion-empty-icon" aria-hidden="true">
-              ◇
-            </span>
-            <p>No actions recorded yet.</p>
-            <small>
-              Human and agent actions will appear here in real time.
-            </small>
-          </div>
-        )}
-      </div>
 
-      {/* 2. Page Capabilities Section — rendered after activity */}
-      <div className="companion-section">
-        <h3 className="companion-section-title">Page Capabilities</h3>
-        {filteredCapabilities.length === 0 ? (
-          <div className="companion-empty">
-            <span className="companion-empty-icon" aria-hidden="true">
-              ◇
-            </span>
-            <p>No Site Tools are enabled yet.</p>
-            <small>
-              This workspace is fully usable by hand. WebMCP capabilities appear
-              here dynamically when registered by the page.
-            </small>
+          <div className="companion-section">
+            <h3 className="companion-section-title">Page Capabilities</h3>
+            {filteredCapabilities.length === 0 ? (
+              <div className="companion-empty">
+                <span className="companion-empty-icon" aria-hidden="true">
+                  ◇
+                </span>
+                <p>No Site Tools are enabled yet.</p>
+                <small>
+                  This workspace is fully usable by hand. WebMCP capabilities
+                  appear here dynamically when registered by the page.
+                </small>
+              </div>
+            ) : (
+              <ul
+                className="capability-list"
+                aria-label="Available capabilities"
+              >
+                {filteredCapabilities.map((capability) => {
+                  const friendlyLabel = getFriendlyOperationLabel(
+                    capability.id,
+                  );
+                  return (
+                    <li key={capability.id} className="capability-item">
+                      <div className="capability-item-main">
+                        <strong>{friendlyLabel}</strong>
+                        <span>{capability.summary}</span>
+                      </div>
+                      <details className="capability-details">
+                        <summary>Technical details</summary>
+                        <div className="capability-details-body">
+                          <strong>
+                            <code>{capability.id}</code>
+                          </strong>
+                        </div>
+                      </details>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
-        ) : (
-          <ul className="capability-list" aria-label="Available capabilities">
-            {filteredCapabilities.map((capability) => {
-              const friendlyLabel = getFriendlyOperationLabel(capability.id);
-              return (
-                <li key={capability.id} className="capability-item">
-                  <div className="capability-item-main">
-                    <strong>{friendlyLabel}</strong>
-                    <span>{capability.summary}</span>
-                  </div>
-                  <details className="capability-details">
-                    <summary>Technical details</summary>
-                    <div className="capability-details-body">
-                      <strong>
-                        <code>{capability.id}</code>
-                      </strong>
-                    </div>
-                  </details>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+
+          <details className="companion-help-details">
+            <summary>How CivicFlow works</summary>
+            <div className="companion-help-body">
+              <p>
+                CivicFlow is a fictional research demo that uses synthetic data
+                only.
+              </p>
+              <p>
+                Human actions and optional WebMCP Site Tools update the same
+                visible page state. Review every proposed change before it is
+                applied.
+              </p>
+            </div>
+          </details>
+        </div>
+      </details>
     </>
   );
 }
@@ -277,9 +351,13 @@ export function AgentCompanion({
   isOpen,
   onClose,
   onOpen,
+  guideOpen = false,
+  onDismissGuide,
 }: AgentCompanionProps) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<AssistantPanelHandle>(null);
+  const [isListening, setIsListening] = useState(false);
   const wasOpen = useRef(false);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
@@ -298,83 +376,74 @@ export function AgentCompanion({
   const pendingConfirmationRef = useRef(pendingConfirmation);
   pendingConfirmationRef.current = pendingConfirmation;
 
-  useEffect(() => {
-    if (!assistantController) {
-      setPendingConfirmation(null);
-      return;
-    }
-
-    const unsubscribe = assistantController.subscribe(
-      (event: AssistantControllerEvent) => {
-        switch (event.type) {
-          case 'confirmation_required':
-            {
-              const nextConfirmation = {
-                callId: event.callId,
-                toolName: event.toolName,
-                message: event.message,
-                draft: event.draft,
-              };
-              pendingConfirmationRef.current = nextConfirmation;
-              setPendingConfirmation(nextConfirmation);
-            }
-            setConfirmationStatus('confirming');
-            setConfirmationFailure(undefined);
-            setDeliveryFailure(null);
-            break;
-          case 'applying':
-            if (pendingConfirmationRef.current?.callId === event.callId) {
-              (speechOutput ?? browserSpeechOutput).cancel();
-              setConfirmationStatus('applying');
-            }
-            break;
-          case 'revision_requested':
-            if (pendingConfirmationRef.current?.callId === event.callId) {
-              pendingConfirmationRef.current = null;
-              setPendingConfirmation(null);
-              setConfirmationStatus('confirming');
-              setConfirmationFailure(undefined);
-              (speechOutput ?? browserSpeechOutput).cancel();
-              if (usesCompactCompanionLayout()) onOpenRef.current();
-            }
-            break;
-          case 'succeeded':
-            if (pendingConfirmationRef.current?.callId === event.callId) {
-              pendingConfirmationRef.current = null;
-              setPendingConfirmation(null);
-              setConfirmationStatus('confirming');
-              setConfirmationFailure(undefined);
-              setFocusHeadingAfterSuccess(true);
-              onCloseRef.current();
-            }
-            break;
-          case 'failed':
-            if (pendingConfirmationRef.current?.callId === event.callId) {
-              setConfirmationStatus('failed');
-              setConfirmationFailure(event.message);
-            }
-            break;
-          case 'delivery_failed':
-            setDeliveryFailure(event.message);
-            break;
-          case 'state':
-            if (event.state.status !== 'connected') {
-              pendingConfirmationRef.current = null;
-              setPendingConfirmation(null);
-            }
-            break;
-          case 'error':
-            pendingConfirmationRef.current = null;
-            setPendingConfirmation(null);
-            setDeliveryFailure(null);
-            break;
-          default:
-            break;
+  const handleAssistantControllerEvent = (event: AssistantControllerEvent) => {
+    switch (event.type) {
+      case 'confirmation_required': {
+        const nextConfirmation = {
+          callId: event.callId,
+          toolName: event.toolName,
+          message: event.message,
+          draft: event.draft,
+        };
+        pendingConfirmationRef.current = nextConfirmation;
+        setPendingConfirmation(nextConfirmation);
+        setConfirmationStatus('confirming');
+        setConfirmationFailure(undefined);
+        setDeliveryFailure(null);
+        break;
+      }
+      case 'applying':
+        if (pendingConfirmationRef.current?.callId === event.callId) {
+          (speechOutput ?? browserSpeechOutput).cancel();
+          setConfirmationStatus('applying');
         }
-      },
-    );
-    return unsubscribe;
-  }, [assistantController, speechOutput]);
+        break;
+      case 'revision_requested':
+        if (pendingConfirmationRef.current?.callId === event.callId) {
+          pendingConfirmationRef.current = null;
+          setPendingConfirmation(null);
+          setConfirmationStatus('confirming');
+          setConfirmationFailure(undefined);
+          (speechOutput ?? browserSpeechOutput).cancel();
+          if (usesCompactCompanionLayout()) onOpenRef.current();
+        }
+        break;
+      case 'succeeded':
+        if (pendingConfirmationRef.current?.callId === event.callId) {
+          pendingConfirmationRef.current = null;
+          setPendingConfirmation(null);
+          setConfirmationStatus('confirming');
+          setConfirmationFailure(undefined);
+          setFocusHeadingAfterSuccess(true);
+          onCloseRef.current();
+        }
+        break;
+      case 'failed':
+        if (pendingConfirmationRef.current?.callId === event.callId) {
+          setConfirmationStatus('failed');
+          setConfirmationFailure(event.message);
+        }
+        break;
+      case 'delivery_failed':
+        setDeliveryFailure(event.message);
+        break;
+      case 'state':
+        if (event.state.status !== 'connected') {
+          pendingConfirmationRef.current = null;
+          setPendingConfirmation(null);
+          setIsListening(false);
+        }
+        break;
+      case 'error':
+        pendingConfirmationRef.current = null;
+        setPendingConfirmation(null);
+        setDeliveryFailure(null);
+        setIsListening(false);
+        break;
+      default:
+        break;
+    }
+  };
 
   useEffect(() => {
     const appFrame = document.querySelector<HTMLElement>('.app-frame');
@@ -450,64 +519,112 @@ export function AgentCompanion({
 
   return (
     <>
-      <aside className="companion-panel" aria-label="Agent Companion">
-        <CompanionContent
-          capabilities={capabilities}
-          activity={activity}
-          assistantController={assistantController}
-          assistantEnabled={assistantEnabled}
-          onReadCurrentSection={onReadCurrentSection}
-          speechOutput={speechOutput}
-          activeOperation={activeOperation}
-          renderConfirmation={false}
-          deliveryFailure={deliveryFailure}
-        />
-        <button
-          ref={triggerRef}
-          className="companion-mobile-trigger"
-          type="button"
-          onClick={onOpen}
-          aria-expanded={isOpen}
-          aria-controls="agent-companion-dialog"
-        >
-          Open Agent Companion
-        </button>
-      </aside>
-
-      {isOpen ? (
-        <div className="companion-dialog-backdrop" role="presentation">
-          <section
-            className="companion-dialog"
-            id="agent-companion-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="agent-companion-dialog-heading"
+      <div className="assistant-companion-host">
+        {guideOpen ? (
+          <div
+            className="assistant-coachmark"
+            data-testid="assistant-coachmark"
+            aria-label="Assistant tip"
+            tabIndex={-1}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.stopPropagation();
+                onDismissGuide?.();
+              }
+            }}
           >
-            <div className="companion-dialog-header">
-              <h2 id="agent-companion-dialog-heading">Agent Companion</h2>
+            <div>
+              <strong>Need a hand?</strong>
+              <p>Ask CivicFlow a question or start a voice conversation.</p>
+            </div>
+            <div className="assistant-coachmark-actions">
               <button
-                ref={closeRef}
                 type="button"
-                onClick={onClose}
-                aria-label="Close Agent Companion"
+                className="assistant-coachmark-primary"
+                onClick={() => {
+                  onDismissGuide?.();
+                  onOpen();
+                }}
+              >
+                Try the assistant
+              </button>
+              <button
+                type="button"
+                className="assistant-coachmark-dismiss"
+                aria-label="Dismiss assistant tip"
+                onClick={onDismissGuide}
               >
                 ×
               </button>
             </div>
-            <CompanionContent
-              capabilities={capabilities}
-              activity={activity}
-              assistantController={assistantController}
-              assistantEnabled={assistantEnabled}
-              onReadCurrentSection={onReadCurrentSection}
-              speechOutput={speechOutput}
-              activeOperation={activeOperation}
-              renderConfirmation={false}
-              deliveryFailure={deliveryFailure}
-            />
-          </section>
-        </div>
-      ) : null}
+          </div>
+        ) : null}
+        <button
+          ref={triggerRef}
+          className="assistant-launcher"
+          data-testid="assistant-launcher"
+          type="button"
+          onClick={() => {
+            if (isOpen) {
+              onClose();
+              return;
+            }
+            onDismissGuide?.();
+            onOpen();
+          }}
+          aria-expanded={isOpen}
+          aria-controls="agent-companion-dialog"
+          aria-label={
+            isOpen ? 'Minimize Agent Companion' : 'Open Agent Companion'
+          }
+        >
+          <span className="assistant-launcher-orb" aria-hidden="true">
+            ✦
+          </span>
+        </button>
+
+        <aside
+          className={`companion-panel assistant-surface${isOpen ? ' companion-panel--open' : ''}`}
+          id="agent-companion-dialog"
+          role={isOpen ? 'dialog' : 'complementary'}
+          aria-label={isOpen ? undefined : 'Agent Companion'}
+          aria-labelledby={
+            isOpen ? 'agent-companion-dialog-heading' : undefined
+          }
+        >
+          <CompanionContent
+            capabilities={capabilities}
+            activity={activity}
+            assistantController={assistantController}
+            assistantEnabled={assistantEnabled}
+            onReadCurrentSection={onReadCurrentSection}
+            speechOutput={speechOutput}
+            activeOperation={activeOperation}
+            renderConfirmation={false}
+            deliveryFailure={deliveryFailure}
+            onControllerEvent={handleAssistantControllerEvent}
+            isOpen={isOpen}
+            closeRef={closeRef}
+            onClose={onClose}
+            panelRef={panelRef}
+            onListeningChange={setIsListening}
+          />
+        </aside>
+        {!isOpen && isListening ? (
+          <button
+            type="button"
+            className="assistant-minimized-stop"
+            data-testid="assistant-minimized-stop"
+            aria-label="Stop listening"
+            onClick={(event) => {
+              event.stopPropagation();
+              panelRef.current?.stopListening();
+            }}
+          >
+            <span aria-hidden="true">⏹</span>
+          </button>
+        ) : null}
+      </div>
 
       {pendingConfirmation ? (
         <ToolConfirmationModal

@@ -26,6 +26,7 @@ export interface MicrophoneProvider {
 export interface AudioOutput {
   play(data: string, mimeType: string): void;
   stop(): void;
+  setMuted?(muted: boolean): void;
 }
 
 export interface PageLifecycleTarget {
@@ -78,6 +79,7 @@ export interface AssistantController {
   disconnect(): void;
   startMicrophone(): Promise<void>;
   stopMicrophone(): void;
+  setSpeakerMuted(muted: boolean): void;
   sendText(text: string): void;
   confirmToolCall(callId: string): Promise<void>;
   requestRevision(callId: string): boolean;
@@ -692,6 +694,10 @@ export function createAssistantController(
 
     stopMicrophone(): void {
       stopMicrophoneCapture();
+    },
+
+    setSpeakerMuted(muted: boolean): void {
+      dependencies.audioOutput?.setMuted?.(muted);
     },
 
     sendText(text: string): void {

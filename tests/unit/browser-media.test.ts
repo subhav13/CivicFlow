@@ -260,6 +260,56 @@ describe('browser media adapters', () => {
     expect(mockAudioContext.close).toHaveBeenCalled();
   });
 
+  it('mutes active and future PCM output until the speaker is turned back on', () => {
+    const createSource = () => ({
+      buffer: null as unknown,
+      connect: vi.fn(),
+      start: vi.fn(),
+      stop: vi.fn(),
+      disconnect: vi.fn(),
+      onended: null as unknown,
+    });
+    const sources: Array<ReturnType<typeof createSource>> = [];
+    const mockAudioContext = {
+      sampleRate: 24000,
+      currentTime: 0,
+      createBuffer: vi.fn(
+        (channels: number, length: number, sampleRate: number) => ({
+          channels,
+          length,
+          sampleRate,
+          duration: length / sampleRate,
+          getChannelData: vi.fn(() => new Float32Array(length)),
+        }),
+      ),
+      createBufferSource: vi.fn(() => {
+        const source = createSource();
+        sources.push(source);
+        return source;
+      }),
+      destination: {},
+      close: vi.fn(async () => {}),
+    };
+    const output = createBrowserAudioOutput({
+      audioContextConstructor: vi.fn(function () {
+        return mockAudioContext;
+      }) as unknown as typeof AudioContext,
+    });
+    const base64Data = btoa(String.fromCharCode(...new Uint8Array(200)));
+
+    output.play(base64Data, 'audio/pcm;rate=24000');
+    expect(sources).toHaveLength(1);
+
+    output.setMuted(true);
+    expect(sources[0]?.stop).toHaveBeenCalledOnce();
+    output.play(base64Data, 'audio/pcm;rate=24000');
+    expect(sources).toHaveLength(1);
+
+    output.setMuted(false);
+    output.play(base64Data, 'audio/pcm;rate=24000');
+    expect(sources).toHaveLength(2);
+  });
+
   it('provides a safe page lifecycle target that handles pagehide listeners', () => {
     const listeners = new Set<() => void>();
     const fakeWindow = {

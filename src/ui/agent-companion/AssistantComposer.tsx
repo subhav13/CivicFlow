@@ -3,19 +3,30 @@ import { useId, useState, type FormEvent } from 'react';
 export interface AssistantComposerProps {
   onSend: (text: string) => void;
   disabled?: boolean;
+  sendDisabled?: boolean;
+  value?: string;
+  onValueChange?: (value: string) => void;
 }
 
 export function AssistantComposer({
   onSend,
   disabled = false,
+  sendDisabled = false,
+  value,
+  onValueChange,
 }: AssistantComposerProps) {
   const inputId = useId();
-  const [inputText, setInputText] = useState('');
+  const [internalInputText, setInternalInputText] = useState('');
+  const inputText = value ?? internalInputText;
+  const setInputText = (nextValue: string) => {
+    if (value === undefined) setInternalInputText(nextValue);
+    onValueChange?.(nextValue);
+  };
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     const trimmed = inputText.trim();
-    if (!trimmed || disabled) return;
+    if (!trimmed || disabled || sendDisabled) return;
     onSend(trimmed);
     setInputText('');
   };
@@ -40,7 +51,7 @@ export function AssistantComposer({
         <button
           type="submit"
           className="assistant-send-button"
-          disabled={disabled || !inputText.trim()}
+          disabled={disabled || sendDisabled || !inputText.trim()}
         >
           Send
         </button>
