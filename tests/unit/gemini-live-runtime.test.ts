@@ -11,6 +11,7 @@ import type { CurrentToolSurface } from '../../src/assistant/types';
 import type { LiveSocket } from '../../src/assistant/gemini-live-client';
 import { createDefaultModelContextPort } from '../../src/webmcp/in-process-model-context-port';
 import { FakeModelContextPort } from '../../src/webmcp/fake-model-context-port';
+import { BrowserModelContextPort } from '../../src/webmcp/browser-model-context-port';
 class FakeLiveSocket implements LiveSocket {
   sent: string[] = [];
   closed = false;
@@ -808,5 +809,60 @@ describe('local Live runtime', () => {
     expect(registeredTools.length).toBeGreaterThan(0);
 
     runtime.dispose();
+  });
+
+  it('issues a session and connects when browser toolchange observation is unavailable', async () => {
+    const store = createCivicFlowStore({
+      storage: null,
+      sessionStorage: null,
+    });
+    const registeredTools = new Map<string, Record<string, unknown>>();
+    const browserContext = {
+      registerTool: vi.fn(async (definition: Record<string, unknown>) => {
+        const tool = { ...definition };
+        delete tool.execute;
+        registeredTools.set(String(tool.name), tool);
+      }),
+      getTools: vi.fn(async () => Array.from(registeredTools.values())),
+      executeTool: vi.fn(async () => '{}'),
+    };
+    Object.defineProperty(document, 'modelContext', {
+      value: browserContext,
+      configurable: true,
+      writable: true,
+    });
+
+    const fetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            accessToken: 'degraded-observation-token',
+            expiresAt: '2026-08-30T12:00:00.000Z',
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+    ) as unknown as typeof globalThis.fetch;
+    const socket = new FakeLiveSocket();
+    const runtime = createAssistantRuntime({
+      store,
+      port: new BrowserModelContextPort(),
+      createSocket: async () => socket,
+      fetch,
+    });
+
+    try {
+      await runtime.controller.connect();
+
+      expect(fetch).toHaveBeenCalledOnce();
+      expect(socket.sent).toHaveLength(1);
+      expect(runtime.controller.getState()).toEqual({ status: 'connected' });
+    } finally {
+      runtime.dispose();
+      Object.defineProperty(document, 'modelContext', {
+        value: undefined,
+        configurable: true,
+        writable: true,
+      });
+    }
   });
 });

@@ -106,10 +106,20 @@ export class BrowserModelContextPort implements ModelContextPort {
       return () => {};
     }
 
-    context.addEventListener('toolchange', listener);
+    try {
+      if (typeof context.addEventListener !== 'function') {
+        return () => {};
+      }
+      context.addEventListener('toolchange', listener);
+    } catch {
+      return () => {};
+    }
+
     return () => {
       try {
-        context.removeEventListener('toolchange', listener);
+        if (typeof context.removeEventListener === 'function') {
+          context.removeEventListener('toolchange', listener);
+        }
       } catch {
         // Safe disposal on torn-down contexts
       }

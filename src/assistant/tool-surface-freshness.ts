@@ -285,7 +285,14 @@ export function createToolSurfaceFreshnessCoordinator(
       initialized = false;
       pendingRevision = false;
       failedHash = undefined;
-      unsubscribe = options.surface.subscribe(handleToolChange);
+      try {
+        const candidate = options.surface.subscribe(handleToolChange);
+        unsubscribe = typeof candidate === 'function' ? candidate : undefined;
+      } catch {
+        // Observation is optional; a partial bridge must not block the
+        // baseline snapshot or the initial assistant connection.
+        unsubscribe = undefined;
+      }
       try {
         const initialHash = hashToolSurface(await options.surface.snapshot());
         if (!isActive()) return;

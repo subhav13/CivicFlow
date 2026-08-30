@@ -91,6 +91,28 @@ describe('tool-surface freshness coordinator', () => {
     ).not.toBe(hashToolSurface([staticTools[0]]));
   });
 
+  it('keeps baseline startup alive when observation subscription is unavailable', async () => {
+    const snapshot = vi.fn(async () => staticTools);
+    const surface: CurrentToolSurface = {
+      snapshot,
+      execute: vi.fn(async () => '{}'),
+      subscribe: vi.fn(() => {
+        throw new TypeError('toolchange observation is unavailable');
+      }),
+    };
+    const coordinator = createToolSurfaceFreshnessCoordinator({
+      surface,
+      reconnect: vi.fn(async () => {}),
+      isSafeToRefresh: () => true,
+    });
+
+    await expect(coordinator.start()).resolves.toBeUndefined();
+    expect(surface.subscribe).toHaveBeenCalledOnce();
+    expect(snapshot).toHaveBeenCalledOnce();
+    await expect(coordinator.beforeTurn()).resolves.toBe(true);
+    coordinator.dispose();
+  });
+
   it('coalesces duplicate changes and performs one replacement for a contextual appearance', async () => {
     const harness = makeSurface(staticTools);
     const reconnect = vi.fn(async () => {});
