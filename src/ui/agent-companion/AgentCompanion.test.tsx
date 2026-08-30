@@ -51,6 +51,81 @@ describe('AgentCompanion Component (Packet 2.3)', () => {
     },
   ];
 
+  it('keeps the right-edge WebMCP activity disclosure closed, truthful, and newest first', () => {
+    render(
+      <AgentCompanion
+        capabilities={[]}
+        activity={[
+          sampleActivity[0],
+          sampleActivity[1],
+          {
+            id: 'act-3',
+            summary: 'Updated coverage through WebMCP',
+            source: 'webmcp',
+            status: 'succeeded',
+            section: 'coverage',
+            occurredAt: '2026-08-27T12:02:00.000Z',
+          },
+        ]}
+        isOpen={false}
+        onClose={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+
+    const trigger = screen.getByRole('button', { name: 'View agent activity' });
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(
+      screen.queryByRole('region', { name: 'Agent activity' }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    const entries = screen.getAllByTestId('agent-activity-entry');
+    expect(
+      entries.map((entry) => entry.getAttribute('data-activity-id')),
+    ).toEqual(['act-3', 'act-1']);
+    const panel = screen.getByRole('region', { name: 'Agent activity' });
+    expect(
+      within(panel).queryByText('Navigated to Income section'),
+    ).not.toBeInTheDocument();
+    expect(within(panel).getAllByText('Agent action')).toHaveLength(2);
+  });
+
+  it('closes activity whenever the companion opens, so compact layouts show one surface', () => {
+    const onClose = vi.fn();
+    const { rerender } = render(
+      <AgentCompanion
+        capabilities={[]}
+        activity={sampleActivity}
+        isOpen={false}
+        onClose={onClose}
+        onOpen={() => {}}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'View agent activity' }),
+    );
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(
+      screen.getByRole('region', { name: 'Agent activity' }),
+    ).toBeVisible();
+
+    rerender(
+      <AgentCompanion
+        capabilities={[]}
+        activity={sampleActivity}
+        isOpen
+        onClose={onClose}
+        onOpen={() => {}}
+      />,
+    );
+    expect(
+      screen.queryByRole('region', { name: 'Agent activity' }),
+    ).not.toBeInTheDocument();
+  });
+
   function makeController(
     initialState: SessionState = { status: 'connected' },
   ) {
@@ -540,28 +615,25 @@ describe('AgentCompanion Component (Packet 2.3)', () => {
     expect(modal).toHaveTextContent('$1,250.00');
     expect(modal).toHaveTextContent('Monthly');
     expect(modal).toHaveTextContent('Draft preview');
-    expect(modal).toHaveTextContent(
-      'This is the review screen for the proposed change.',
-    );
+    expect(modal).not.toHaveTextContent('A change is ready for confirmation.');
+    expect(modal).not.toHaveTextContent('I confirm these details, add it');
     expect(modal).not.toHaveTextContent('call-modal-1');
     expect(modal).not.toHaveTextContent('argumentsJson');
     expect(modal).not.toHaveTextContent('ownerPersonId');
     expect(
       document.querySelector('.tool-confirmation-modal-backdrop'),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Confirm and apply' }),
-    ).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Save change' })).toHaveFocus();
 
     screen.getByRole('button', { name: 'Cancel' }).focus();
     fireEvent.keyDown(document, { key: 'Tab' });
-    expect(
-      screen.getByRole('button', { name: 'Confirm and apply' }),
-    ).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Save change' })).toHaveFocus();
     fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
     expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
     expect(screen.queryByRole('textbox', { name: /correction/i })).toBeNull();
-    expect(screen.getByText(/say .*confirm/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Save change' }),
+    ).toBeInTheDocument();
     expect(speechOutput.speak).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Need correction' }));
@@ -793,9 +865,7 @@ describe('AgentCompanion Component (Packet 2.3)', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Coverage could not be updated.',
     );
-    expect(
-      screen.getByRole('button', { name: 'Confirm and apply' }),
-    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save change' })).toBeDisabled();
     expect(onClose).not.toHaveBeenCalled();
 
     act(() => {

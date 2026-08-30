@@ -638,7 +638,7 @@ export function createAssistantController(
     const decision = classifyConfirmationReply(pendingReplyText, { final });
     if (decision.kind === 'interim') return;
     if (decision.kind === 'affirmative') {
-      void confirmToolCall(pending.call.callId);
+      pendingReplyText = '';
       return;
     }
     if (decision.text) requestRevision(pending, decision.text);

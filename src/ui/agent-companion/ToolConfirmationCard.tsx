@@ -25,9 +25,8 @@ export function ToolConfirmationCard({
   return (
     <div className="tool-confirmation-card" role="alert">
       <div className="tool-confirmation-header">
-        <span className="tool-confirmation-badge">Confirmation required</span>
+        <span className="tool-confirmation-badge">Review change</span>
       </div>
-      <p className="tool-confirmation-message">{confirmation.message}</p>
       <div className="tool-confirmation-actions">
         <button
           type="button"
@@ -35,7 +34,7 @@ export function ToolConfirmationCard({
           onClick={() => onConfirm(confirmation.callId)}
           disabled={disabled}
         >
-          Confirm and apply
+          Save change
         </button>
         <button
           type="button"
