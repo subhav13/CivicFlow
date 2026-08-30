@@ -110,10 +110,11 @@ describe('Sites Worker artifact', () => {
           unknown
         >;
         expect(body.uses).toBe(1);
-        expect(body.liveConnectConstraints).toEqual({
+        expect(body.bidiGenerateContentSetup).toEqual({
           model: 'models/gemini-3.1-flash-live-preview',
-          config: { responseModalities: ['AUDIO'] },
         });
+        expect(body.fieldMask).toBe('model');
+        expect(body.liveConnectConstraints).toBeUndefined();
         return new Response(
           JSON.stringify({
             name: 'ephemeral-worker-token',

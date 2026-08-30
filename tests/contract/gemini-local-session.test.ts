@@ -77,18 +77,16 @@ describe('local Gemini session boundary', () => {
         expect(headers.get('x-goog-api-key')).toBe('test-api-key');
 
         const body = JSON.parse(String(init?.body ?? '{}'));
-        expect(body.uses).toBe(1);
-        expect(body.model).toBeUndefined();
-        expect(body.bidiGenerateContentSetup).toBeUndefined();
-        expect(body.fieldMask).toBeUndefined();
-        expect(body.liveConnectConstraints).toEqual({
-          model: 'models/gemini-3.1-flash-live-preview',
-          config: { responseModalities: ['AUDIO'] },
+        expect(body).toEqual({
+          uses: 1,
+          expireTime: '2026-08-29T11:40:00.000Z',
+          newSessionExpireTime: '2026-08-29T11:31:00.000Z',
+          bidiGenerateContentSetup: {
+            model: 'models/gemini-3.1-flash-live-preview',
+          },
+          fieldMask: 'model',
         });
-        expect(typeof body.expireTime).toBe('string');
-        expect(typeof body.newSessionExpireTime).toBe('string');
-        expect(Date.parse(body.expireTime)).not.toBeNaN();
-        expect(Date.parse(body.newSessionExpireTime)).not.toBeNaN();
+        expect(body.liveConnectConstraints).toBeUndefined();
         return new Response(JSON.stringify({ name: 'ephemeral-token-abc' }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
@@ -143,9 +141,13 @@ describe('local Gemini session boundary', () => {
     expect(fakeFetch).toHaveBeenCalledTimes(2);
     const models = fakeFetch.mock.calls.map(([, init]) => {
       const body = JSON.parse(String(init?.body ?? '{}')) as {
-        liveConnectConstraints?: { model?: string };
+        bidiGenerateContentSetup?: { model?: string };
+        fieldMask?: string;
+        liveConnectConstraints?: unknown;
       };
-      return body.liveConnectConstraints?.model;
+      expect(body.fieldMask).toBe('model');
+      expect(body.liveConnectConstraints).toBeUndefined();
+      return body.bidiGenerateContentSetup?.model;
     });
     expect(models).toEqual([
       'models/gemini-3.1-flash-live-preview',

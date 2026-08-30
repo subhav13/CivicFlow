@@ -73,12 +73,10 @@ export function createLocalGeminiSessionIssuer(
           uses: 1,
           expireTime,
           newSessionExpireTime,
-          liveConnectConstraints: {
+          bidiGenerateContentSetup: {
             model,
-            config: {
-              responseModalities: ['AUDIO'],
-            },
           },
+          fieldMask: 'model',
         }),
       });
     } catch (err) {
