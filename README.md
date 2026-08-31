@@ -6,10 +6,10 @@ application that a browser agent can inspect and update through a bounded,
 typed tool surface. The product is a research demo: it is not a government
 service, an eligibility engine, or an enrollment submission.
 
-> Release status: this is a local Phase 5 documentation candidate. The
-> previously accepted hosted runtime is Sites version 10 at
-> <https://civicflow.codesm.chatgpt.site>. The candidate documentation has not
-> been committed, pushed, saved to Sites, or deployed.
+> Release status: the Phase 5 documentation package is committed and published
+> as Sites version 11 at <https://civicflow.codesm.chatgpt.site>. The
+> application behavior remains the previously accepted Sites version 10
+> implementation; this release added documentation and the MIT license only.
 
 ## What the demo shows
 
@@ -35,10 +35,11 @@ attest the application.
 The accepted hosted identity is:
 
 - URL: <https://civicflow.codesm.chatgpt.site>
-- source identity: `0632c5d503a98b9d37e2450f2e9c1f3265698930`
-- ChatGPT Sites version: `10`
+- source identity: `12360d10be1c6df8ada56bfccbefda2abc81629c`
+- ChatGPT Sites version: `11` (documentation-only publication)
 - recorded deployment environment revision: `2`
-- evidence state: hosted-tested and user-confirmed in the Phase 4 ledger on
+- evidence state: application behavior hosted-tested and user-confirmed in
+  Sites version 10; version 11 published the documentation-only package on
   2026-08-31 (Asia/Kolkata)
 
 Open the URL in ChatGPT's in-app browser, which supports WebMCP, or in Google
@@ -46,9 +47,10 @@ Chrome 149 or later with `chrome://flags/#enable-webmcp-testing` enabled. The
 browser capability is optional for the human portal; when WebMCP is absent,
 the regular form UI remains the manual fallback.
 
-The URL above identifies the already accepted Sites deployment. It does not
-identify this uncommitted documentation candidate. Any later source commit or
-Sites deployment needs its own exact identity and review record.
+The URL above identifies the current Sites version 11 publication. Its
+application behavior is unchanged from the accepted version 10 runtime; any
+later source commit or Sites deployment needs its own exact identity and review
+record.
 
 ## WebMCP surface
 
@@ -234,13 +236,13 @@ WebMCP was implemented. A draft is prepared at
 
 ## Release and publication status
 
-The existing Sites runtime is traceable to source SHA
-`0632c5d503a98b9d37e2450f2e9c1f3265698930`, Sites version 10, and the public
-URL above. The current Phase 5 documentation candidate is the same local
-checkout with uncommitted documentation changes; it is not the deployed
-runtime until an owner separately authorizes a commit and publication.
+The application runtime behavior is traceable to source SHA
+`0632c5d503a98b9d37e2450f2e9c1f3265698930`, originally accepted as Sites
+version 10. The Phase 5 documentation and license package is source SHA
+`12360d10be1c6df8ada56bfccbefda2abc81629c`, committed and published as the
+documentation-only Sites version 11 at the same public URL.
 
-The owner selected MIT, and this local candidate includes a standard root
+The owner selected MIT, and the published package includes a standard root
 `LICENSE` with the project-level notice. The eligible public-source repository
 URL, public YouTube demo URL, and Devpost submission are publication-pending;
 the license still needs to be made detectable in that authorized public

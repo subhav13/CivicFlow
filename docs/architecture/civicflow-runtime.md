@@ -18,9 +18,11 @@ The hosted behavior referenced here is the already accepted deployment:
 | Public URL                    | <https://civicflow.codesm.chatgpt.site>    |
 | Evidence date                 | 2026-08-31, Asia/Kolkata                   |
 
-The Phase 5 release documents are a local, uncommitted candidate. They do not
-change or redeploy that identity. Local test evidence and hosted evidence are
-kept separate below.
+The Phase 5 release documents were committed and published as the
+documentation-only Sites version 11 from source SHA
+`12360d10be1c6df8ada56bfccbefda2abc81629c`. They do not change the application
+behavior represented by the accepted version 10 identity above. Local test
+evidence and hosted evidence remain separate below.
 
 ## Data flow
 

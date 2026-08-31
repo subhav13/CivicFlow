@@ -3,15 +3,17 @@
 **Submission status: draft only. Do not submit.** The repository and demo
 video links below are explicitly publication-pending because no eligible public
 source URL or public YouTube upload exists yet. The owner-selected MIT license
-is present in this local candidate but is not yet detectable in an authorized
-public repository. This document is prepared for a later owner-authorized
-Devpost entry and does not mutate Devpost.
+is present in the published Sites package, but the Sites-managed repository is
+not the eligible public-source destination required by the challenge. This
+document is prepared for a later owner-authorized Devpost entry and does not
+mutate Devpost.
 
 ## Links and release identity
 
-- Live project: <https://civicflow.codesm.chatgpt.site> (accepted Sites version
-  10, source SHA `0632c5d503a98b9d37e2450f2e9c1f3265698930`, environment
-  revision 2; hosted-tested/user-confirmed on 2026-08-31 Asia/Kolkata).
+- Live project: <https://civicflow.codesm.chatgpt.site> (documentation-only
+  Sites version 11, source SHA `12360d10be1c6df8ada56bfccbefda2abc81629c`,
+  environment revision 2; application behavior hosted-tested/user-confirmed
+  on the accepted version 10 identity on 2026-08-31 Asia/Kolkata).
 - Public code repository: **PUBLICATION PENDING — an eligible public GitHub,
   GitLab, or Bitbucket URL will be added only after the owner authorizes a
   commit and public push; the local candidate contains the owner-selected MIT
@@ -20,8 +22,8 @@ Devpost entry and does not mutate Devpost.
   only after an owner-authorized upload verifies clear audio and duration under
   three minutes.**
 
-The live URL identifies the already accepted hosted runtime. The local Phase 5
-documentation candidate is uncommitted and has not been deployed.
+The live URL identifies the documentation-only Sites version 11 publication;
+its application behavior is unchanged from the accepted version 10 runtime.
 
 ## What did you build?
 
@@ -106,8 +108,9 @@ The optional hosted Gemini path is routed through
 `/api/gemini/session`. `server/sites-worker.ts` and
 `server/gemini-session-core.ts` keep `GEMINI_API_KEY` server-only and return a
 short-lived constrained session credential. The client and the Worker use
-explicit gates that are off by default. The accepted hosted Site is version 10;
-the documentation candidate has not changed or redeployed it.
+explicit gates that are off by default. The accepted application behavior is
+the version 10 runtime; the documentation candidate was published without
+application-source changes as Sites version 11.
 
 ## Judging criteria map
 

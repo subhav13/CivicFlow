@@ -11,9 +11,10 @@ judge can inspect each boundary.
 1. Open <https://civicflow.codesm.chatgpt.site> in ChatGPT's in-app browser,
    or use Chrome 149+ with `chrome://flags/#enable-webmcp-testing` enabled.
 2. Confirm the page is anonymous and the CivicFlow portal is visible. The
-   accepted hosted identity is source commit
-   `0632c5d503a98b9d37e2450f2e9c1f3265698930`, Sites version `10`, environment
-   revision `2`.
+   current hosted identity is source commit
+   `12360d10be1c6df8ada56bfccbefda2abc81629c`, Sites version `11`, environment
+   revision `2`; it is a documentation-only publication of the application
+   behavior accepted on version `10`.
 3. Start from the deterministic Maya Carter seed. If the prior rehearsal
    left local state behind, use Review & Sign → **Reset demo** → **Confirm
    reset**. Never use real names, addresses, income, or documents.

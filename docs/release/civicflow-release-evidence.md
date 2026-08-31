@@ -2,13 +2,12 @@
 
 ## Status
 
-**Local documentation candidate; independently accepted for local Phase 5.**
-This record covers Phase 5 Packets 5.0–5.4 only. It does not authorize a commit, push,
-Site save/deploy, live Gemini call, video upload, or Devpost action. The owner
-selected MIT, and the local candidate includes a standard root `LICENSE` with
-the project-level notice. Final public-source readiness remains blocked
-pending an authorized eligible public-repository publication and the other
-external release gates.
+**Phase 5 documentation package; independently accepted and published as Sites
+version 11.** This record covers Phase 5 Packets 5.0–5.4 only. The owner
+selected MIT, and the published package includes a standard root `LICENSE` with
+the project-level notice. The authorized Sites commit, managed-source push, and
+deployment are recorded below; eligible public-source publication, video,
+Devpost, and future live-provider actions remain separate external gates.
 
 Evidence labels used here:
 
@@ -22,33 +21,33 @@ Evidence labels used here:
 
 ### Accepted deployed runtime
 
-| Field                         | Value                                                                                      |
-| ----------------------------- | ------------------------------------------------------------------------------------------ |
-| Branch                        | `main`                                                                                     |
-| Source commit                 | `0632c5d503a98b9d37e2450f2e9c1f3265698930`                                                 |
-| ChatGPT Sites version         | `10`                                                                                       |
-| Recorded environment revision | `2`                                                                                        |
-| Public URL                    | <https://civicflow.codesm.chatgpt.site>                                                    |
-| Evidence date                 | 2026-08-31, Asia/Kolkata                                                                   |
-| Result                        | Hosted checks and the user's public UI assistant check were accepted in the Phase 4 ledger |
+| Field                         | Value                                                                                                  |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Branch                        | `main`                                                                                                 |
+| Source commit                 | `12360d10be1c6df8ada56bfccbefda2abc81629c`                                                             |
+| ChatGPT Sites version         | `11` (documentation-only publication)                                                                  |
+| Recorded environment revision | `2`                                                                                                    |
+| Public URL                    | <https://civicflow.codesm.chatgpt.site>                                                                |
+| Evidence date                 | 2026-08-31, Asia/Kolkata                                                                               |
+| Result                        | Documentation-only publication succeeded; application behavior remains the version 10 accepted runtime |
 
-This identity describes the runtime already deployed on Sites. It is the
-source of hosted claims in this document; the Phase 5 documentation candidate
-is not a new deployment.
+This identity describes the current Sites publication. Hosted application
+claims remain grounded in the version 10 checks recorded in the Phase 4 ledger;
+version 11 adds only the Phase 5 documentation and license package.
 
-### Local Phase 5 candidate
+### Phase 5 source/publication candidate
 
-| Field               | Value                                                                                                     |
-| ------------------- | --------------------------------------------------------------------------------------------------------- |
-| Starting branch     | `main`                                                                                                    |
-| Starting HEAD       | `0632c5d503a98b9d37e2450f2e9c1f3265698930`                                                                |
-| Starting worktree   | Clean; `main` was 17 commits ahead of intentionally unpushed `origin/main`                                |
-| Candidate changes   | Documentation-only, uncommitted, limited to the Phase 5 allowlist                                         |
-| Deployment identity | None; this candidate has not been saved or deployed                                                       |
-| Candidate evidence  | Recorded below; independent Sol High review is GO for local packets and external publication gates remain |
+| Field               | Value                                                                                                         |
+| ------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Starting branch     | `main`                                                                                                        |
+| Starting HEAD       | `0632c5d503a98b9d37e2450f2e9c1f3265698930`                                                                    |
+| Starting worktree   | Clean; `main` was 17 commits ahead of intentionally unpushed `origin/main`                                    |
+| Candidate changes   | Documentation-only, committed as `12360d10be1c6df8ada56bfccbefda2abc81629c`, limited to the Phase 5 allowlist |
+| Deployment identity | Sites version `11`, environment revision `2`, same public URL                                                 |
+| Candidate evidence  | Recorded below; independent Sol High review is GO for local packets and external publication gates remain     |
 
-Do not label a later documentation commit as the source of Sites version 10
-unless the owner separately deploys and reaccepts that exact commit.
+Do not use the documentation-only version 11 publication as new evidence for
+application behavior beyond the already accepted version 10 runtime.
 
 ## Official requirements checked
 
@@ -81,24 +80,24 @@ This matrix was built before the release artifacts were authored. Every public
 claim in the README, demo script, storyboard, and Devpost draft must stay
 within these rows.
 
-| ID    | Claim                                                                         | State                                             | Exact owner/evidence                                                                                                                                 | Limitation                                                                                               |
-| ----- | ----------------------------------------------------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| EV-01 | CivicFlow is a deterministic synthetic workflow demo                          | `local-tested`                                    | `src/domain/index.ts`, `createDemoApplicationSeed`; accepted local unit/contract/E2E ledgers                                                         | Not a government service, policy engine, or eligibility decision                                         |
-| EV-02 | Exactly ten WebMCP tools are catalogued                                       | `local-tested`                                    | `src/webmcp/tool-catalog.ts`, `CIVICFLOW_TOOL_NAMES` and `TOOL_CATALOG`                                                                              | No submit or attest tool                                                                                 |
-| EV-03 | Browser registration uses WebMCP `execute`                                    | `local-tested`                                    | `src/webmcp/browser-model-context-port.ts`, `src/webmcp/use-webmcp-registry.ts`                                                                      | Feature-detects `document.modelContext`; manual UI remains available without it                          |
-| EV-04 | Seven tools are static and three are contextual                               | `local-tested`                                    | `STATIC_TOOL_NAMES`, `CONTEXTUAL_TOOL_NAMES`, and `src/webmcp/registry-manager.ts`                                                                   | Contextual tools follow current section/selection                                                        |
-| EV-05 | Agent mutations use existing commands/store and visible lifecycle state       | `local-tested`                                    | `src/webmcp/tool-handlers.ts`, `src/webmcp/tool-lifecycle.ts`, accepted collaboration/UI tests                                                       | Direct WebMCP execution is visible through activity/progress; assistant mutations are confirmation-gated |
-| EV-06 | Gemini assistant uses the current WebMCP surface and button-only confirmation | `local-tested` + `hosted-tested`/`user-confirmed` | `src/assistant/current-tool-surface.ts`, `src/assistant/gemini-tool-bridge.ts`, `src/assistant/assistant-controller.ts`; accepted Phase 2/4 evidence | Optional; no new provider call in Phase 5 and no guarantee of provider/quota behavior                    |
-| EV-07 | Hosted session is server-issued and credential-safe                           | `local-tested` + `hosted-tested`                  | `server/gemini-session-core.ts`, `server/gemini-local-session.ts`, `server/sites-worker.ts`; accepted broker 200/no-store and setup evidence         | `GEMINI_API_KEY` is server-only; no value is recorded here                                               |
-| EV-08 | Worker routes `/api/gemini/session` before SPA fallback                       | `local-tested` + `hosted-tested`                  | `server/sites-gemini-session-adapter.ts`, `server/sites-worker.ts`; Worker/session contract tests and Sites v10 evidence                             | No custom analytics API route                                                                            |
-| EV-09 | Human and agent paths converge on the same local application state            | `local-tested`                                    | `src/application/store.ts`, WebMCP handlers, portal/assistant tests                                                                                  | Browser-local persistence only; no cross-device sync or auth                                             |
-| EV-10 | Submit Demo remains a human-only local fictional action                       | `local-tested`                                    | `src/ui/sections/ReviewSection.tsx`, application command/no-submit tests                                                                             | No network request, government enrollment, agent submission, or attestation tool                         |
-| EV-11 | Accepted deployed runtime is available at the public URL                      | `hosted-tested` + `user-confirmed`                | Source SHA `0632c5d503a98b9d37e2450f2e9c1f3265698930`, Sites v10/environment revision 2, public URL, Phase 4 ledger                                  | Does not prove this uncommitted documentation candidate is deployed                                      |
-| EV-12 | Sites platform traffic analytics is the only analytics scope                  | `deferred`                                        | Phase 4C decision in `civicflow-final-hardening-v1` ledger                                                                                           | No custom analytics client, event route, D1, dashboard, or persistent visitor identity                   |
-| EV-13 | Candidate setup/build/test gates are reproducible                             | `local-tested`                                    | Disposable exact candidate and command results in the verification section below                                                                     | Sol High accepted the local packets; external release gates remain                                       |
-| EV-14 | Public source repository with detectable open-source license is ready         | `blocked`                                         | Owner-selected MIT root `LICENSE`; official rules; no eligible public repository URL or push yet                                                     | Publication-pending; public-repository detectability is not completed proof                              |
-| EV-15 | Public YouTube demo is ready                                                  | `blocked`                                         | Official rules; no public URL or upload authorization exists                                                                                         | Storyboard only; publication-pending                                                                     |
-| EV-16 | Devpost submission is ready                                                   | `blocked`                                         | No Devpost mutation authorized and no submission URL exists                                                                                          | Draft only; not submitted                                                                                |
+| ID    | Claim                                                                         | State                                             | Exact owner/evidence                                                                                                                                       | Limitation                                                                                               |
+| ----- | ----------------------------------------------------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| EV-01 | CivicFlow is a deterministic synthetic workflow demo                          | `local-tested`                                    | `src/domain/index.ts`, `createDemoApplicationSeed`; accepted local unit/contract/E2E ledgers                                                               | Not a government service, policy engine, or eligibility decision                                         |
+| EV-02 | Exactly ten WebMCP tools are catalogued                                       | `local-tested`                                    | `src/webmcp/tool-catalog.ts`, `CIVICFLOW_TOOL_NAMES` and `TOOL_CATALOG`                                                                                    | No submit or attest tool                                                                                 |
+| EV-03 | Browser registration uses WebMCP `execute`                                    | `local-tested`                                    | `src/webmcp/browser-model-context-port.ts`, `src/webmcp/use-webmcp-registry.ts`                                                                            | Feature-detects `document.modelContext`; manual UI remains available without it                          |
+| EV-04 | Seven tools are static and three are contextual                               | `local-tested`                                    | `STATIC_TOOL_NAMES`, `CONTEXTUAL_TOOL_NAMES`, and `src/webmcp/registry-manager.ts`                                                                         | Contextual tools follow current section/selection                                                        |
+| EV-05 | Agent mutations use existing commands/store and visible lifecycle state       | `local-tested`                                    | `src/webmcp/tool-handlers.ts`, `src/webmcp/tool-lifecycle.ts`, accepted collaboration/UI tests                                                             | Direct WebMCP execution is visible through activity/progress; assistant mutations are confirmation-gated |
+| EV-06 | Gemini assistant uses the current WebMCP surface and button-only confirmation | `local-tested` + `hosted-tested`/`user-confirmed` | `src/assistant/current-tool-surface.ts`, `src/assistant/gemini-tool-bridge.ts`, `src/assistant/assistant-controller.ts`; accepted Phase 2/4 evidence       | Optional; no new provider call in Phase 5 and no guarantee of provider/quota behavior                    |
+| EV-07 | Hosted session is server-issued and credential-safe                           | `local-tested` + `hosted-tested`                  | `server/gemini-session-core.ts`, `server/gemini-local-session.ts`, `server/sites-worker.ts`; accepted broker 200/no-store and setup evidence               | `GEMINI_API_KEY` is server-only; no value is recorded here                                               |
+| EV-08 | Worker routes `/api/gemini/session` before SPA fallback                       | `local-tested` + `hosted-tested`                  | `server/sites-gemini-session-adapter.ts`, `server/sites-worker.ts`; Worker/session contract tests and Sites v10 evidence                                   | No custom analytics API route                                                                            |
+| EV-09 | Human and agent paths converge on the same local application state            | `local-tested`                                    | `src/application/store.ts`, WebMCP handlers, portal/assistant tests                                                                                        | Browser-local persistence only; no cross-device sync or auth                                             |
+| EV-10 | Submit Demo remains a human-only local fictional action                       | `local-tested`                                    | `src/ui/sections/ReviewSection.tsx`, application command/no-submit tests                                                                                   | No network request, government enrollment, agent submission, or attestation tool                         |
+| EV-11 | Accepted deployed runtime is available at the public URL                      | `hosted-tested` + `user-confirmed`                | Application SHA `0632c5d503a98b9d37e2450f2e9c1f3265698930`, accepted Sites v10 checks, current docs-only Sites v11 publication, public URL, Phase 4 ledger | Version 11 adds documentation/license only; no new application UI proof is claimed                       |
+| EV-12 | Sites platform traffic analytics is the only analytics scope                  | `deferred`                                        | Phase 4C decision in `civicflow-final-hardening-v1` ledger                                                                                                 | No custom analytics client, event route, D1, dashboard, or persistent visitor identity                   |
+| EV-13 | Candidate setup/build/test gates are reproducible                             | `local-tested`                                    | Disposable exact candidate and command results in the verification section below                                                                           | Sol High accepted the local packets; external release gates remain                                       |
+| EV-14 | Public source repository with detectable open-source license is ready         | `blocked`                                         | Owner-selected MIT root `LICENSE`; Sites-managed source push complete; official rules; no eligible public GitHub/GitLab/Bitbucket URL or push yet          | Publication-pending; public-repository detectability is not completed proof                              |
+| EV-15 | Public YouTube demo is ready                                                  | `blocked`                                         | Official rules; no public URL or upload authorization exists                                                                                               | Storyboard only; publication-pending                                                                     |
+| EV-16 | Devpost submission is ready                                                   | `blocked`                                         | No Devpost mutation authorized and no submission URL exists                                                                                                | Draft only; not submitted                                                                                |
 
 The following are explicitly excluded as `unsupported`: government integration,
 eligibility determination, official benefits advice, real enrollment, real
@@ -198,14 +197,15 @@ Generated-output audit:
 - The generated Worker contains `/api/gemini/session` and no custom analytics
   or D1 route.
 
-Final candidate status remained `main...origin/main` with HEAD
-`0632c5d503a98b9d37e2450f2e9c1f3265698930` and only the six allowlisted
-documentation files plus `LICENSE` untracked. The source checkout status
-contains the same seven allowlisted artifacts. EV-13 is locally evidenced, the
-owner license is present, and independent Sol High review is **GO for local
-packets / GO-with-external-gates for Phase 5**. Public-repository, video,
-Devpost, commit, and judge-access gates remain open; this is not an external
-release GO.
+Final candidate status is clean `main` at HEAD
+`12360d10be1c6df8ada56bfccbefda2abc81629c`; the seven allowlisted artifacts
+are committed, pushed to the Sites-managed source repository, and published as
+Sites version 11. EV-13 is locally evidenced, the owner license is present,
+and independent Sol High review is **GO for local packets /
+GO-with-external-gates for Phase 5**. An eligible public-repository URL/push,
+public-repository license detectability, video, Devpost, and continued
+judge-access gates remain open; this is not an external challenge-submission
+GO.
 
 ## Artifact and security audit
 
@@ -245,22 +245,22 @@ defined by `scripts/scan-secrets.mjs`.
 
 ## External release gates still unresolved
 
-1. Owner separately authorizes a release commit for the documentation package.
-2. Owner separately authorizes push to an eligible public GitHub, GitLab, or
+1. Owner separately authorizes push to an eligible public GitHub, GitLab, or
    Bitbucket repository and verifies the detectable license in the repository
-   About section.
-3. Owner separately authorizes and uploads the under-three-minute demo to
+   About section. The Sites-managed source push is not that public challenge
+   repository.
+2. Owner separately authorizes and uploads the under-three-minute demo to
    public YouTube, then records its real URL and audio/duration evidence.
-4. Owner separately authorizes Devpost account/form mutation and final
+3. Owner separately authorizes Devpost account/form mutation and final
    submission; the prepared draft is not a submission.
-5. The public Site and judge access must remain available through the judging
+4. The public Site and judge access must remain available through the judging
    period. A product/build/environment change would reopen deployment review.
 
 ## Handoff state
 
-This document is a writer handoff, not acceptance. It should transition to
-`codex-review` only after the exact candidate results, final status/diff, and
-allowlist inspection are recorded. Independent reviewer routing:
+This document records the independently accepted local package and its
+documentation-only Sites publication. External challenge-submission GO remains
+withheld. Independent reviewer routing and evidence:
 
 ```text
 MODEL: gpt-5.6-sol
@@ -269,11 +269,13 @@ ROUTING RATIONALE: final release acceptance requires independent comparison of t
 ESCALATION CONDITION: use Sol Max only if material contradictory or high-risk evidence survives the first review; otherwise return the defect or claim to its owning packet
 ```
 
-Request for the reviewer: inspect the actual source checkout and candidate,
-rerun the gates, compare each claim to EV-01–EV-16, verify the ten-tool,
+The reviewer inspected the actual source checkout and candidate, reran the
+gates, compared claims to EV-01–EV-16, verified the ten-tool,
 browser-adapter, server-secret, no-submit, contextual, and 4C-deferred
-boundaries, and explicitly preserve the distinction between deployed SHA
-`0632c5d503a98b9d37e2450f2e9c1f3265698930`/Sites v10 and this local
-documentation candidate. Do not record an external-release GO until the
-remaining publication gates are handled by their authorized owners; the local
-Sol High review is recorded above as GO-with-external-gates.
+boundaries, and preserved the distinction between the accepted application
+behavior on source SHA `0632c5d503a98b9d37e2450f2e9c1f3265698930`/Sites v10 and
+the documentation-only publication on source SHA
+`12360d10be1c6df8ada56bfccbefda2abc81629c`/Sites v11. Do not record an
+external-release GO until the remaining publication gates are handled by their
+authorized owners; the local Sol High review is recorded above as
+GO-with-external-gates.
