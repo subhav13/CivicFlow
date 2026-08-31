@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createLocalGeminiSessionHandler } from '../../server/gemini-local-session';
+import {
+  createLocalGeminiSessionHandler,
+  createLocalGeminiSessionIssuer,
+} from '../../server/gemini-local-session';
 
 describe('local Gemini session boundary', () => {
   const localOrigin = 'http://localhost:5173';
@@ -74,17 +77,16 @@ describe('local Gemini session boundary', () => {
         expect(headers.get('x-goog-api-key')).toBe('test-api-key');
 
         const body = JSON.parse(String(init?.body ?? '{}'));
-        expect(body.uses).toBe(1);
-        expect(body.model).toBeUndefined();
-        expect(body.bidiGenerateContentSetup).toEqual({
-          model: 'models/gemini-3.1-flash-live-preview',
+        expect(body).toEqual({
+          uses: 1,
+          expireTime: '2026-08-29T11:40:00.000Z',
+          newSessionExpireTime: '2026-08-29T11:31:00.000Z',
+          bidiGenerateContentSetup: {
+            model: 'models/gemini-3.1-flash-live-preview',
+          },
+          fieldMask: 'model',
         });
-        expect(body.fieldMask).toBe('model');
         expect(body.liveConnectConstraints).toBeUndefined();
-        expect(typeof body.expireTime).toBe('string');
-        expect(typeof body.newSessionExpireTime).toBe('string');
-        expect(Date.parse(body.expireTime)).not.toBeNaN();
-        expect(Date.parse(body.newSessionExpireTime)).not.toBeNaN();
         return new Response(JSON.stringify({ name: 'ephemeral-token-abc' }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
@@ -114,9 +116,43 @@ describe('local Gemini session boundary', () => {
     const data = await response.json();
     expect(data).toEqual({
       accessToken: 'ephemeral-token-abc',
-      expiresAt: '2026-08-29T12:00:00.000Z',
+      expiresAt: '2026-08-29T11:40:00.000Z',
     });
     expect(fakeFetch).toHaveBeenCalledOnce();
+  });
+
+  it('normalizes bare and prefixed model names for the direct REST issuer', async () => {
+    const fakeFetch = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ name: 'ephemeral-token-abc' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+    );
+    const issuer = createLocalGeminiSessionIssuer({
+      apiKey: 'test-api-key',
+      fetch: fakeFetch as unknown as typeof fetch,
+      now: () => Date.parse('2026-08-29T11:30:00.000Z'),
+    });
+
+    await issuer({ model: 'gemini-3.1-flash-live-preview' });
+    await issuer({ model: 'models/gemini-3.1-flash-live-preview' });
+
+    expect(fakeFetch).toHaveBeenCalledTimes(2);
+    const models = fakeFetch.mock.calls.map(([, init]) => {
+      const body = JSON.parse(String(init?.body ?? '{}')) as {
+        bidiGenerateContentSetup?: { model?: string };
+        fieldMask?: string;
+        liveConnectConstraints?: unknown;
+      };
+      expect(body.fieldMask).toBe('model');
+      expect(body.liveConnectConstraints).toBeUndefined();
+      return body.bidiGenerateContentSetup?.model;
+    });
+    expect(models).toEqual([
+      'models/gemini-3.1-flash-live-preview',
+      'models/gemini-3.1-flash-live-preview',
+    ]);
   });
 
   it('retains rate limiting across separate requests handled by the same local handler', async () => {
@@ -124,7 +160,7 @@ describe('local Gemini session boundary', () => {
       return new Response(
         JSON.stringify({
           token: 'ephemeral-token-123',
-          expireTime: '2026-08-29T12:00:00.000Z',
+          expireTime: '2026-08-29T11:40:00.000Z',
         }),
         {
           status: 200,
@@ -140,6 +176,7 @@ describe('local Gemini session boundary', () => {
       fetch: fakeFetch as unknown as typeof fetch,
       maxSessionsPerWindow: 2,
       rateWindowMs: 60_000,
+      now: () => Date.parse('2026-08-29T11:30:00.000Z'),
     });
 
     const first = await handler(createRequest());
@@ -193,7 +230,7 @@ describe('local Gemini session boundary', () => {
       return new Response(
         JSON.stringify({
           token: 'ephemeral-token-safe',
-          expireTime: '2026-08-29T12:00:00.000Z',
+          expireTime: '2026-08-29T11:40:00.000Z',
         }),
         {
           status: 200,
@@ -207,6 +244,7 @@ describe('local Gemini session boundary', () => {
       apiKey: rawSecret,
       expectedOrigin: localOrigin,
       fetch: fakeFetch as unknown as typeof fetch,
+      now: () => Date.parse('2026-08-29T11:30:00.000Z'),
     });
 
     const response = await handler(createRequest());
@@ -214,6 +252,37 @@ describe('local Gemini session boundary', () => {
 
     expect(response.status).toBe(200);
     expect(rawText).not.toContain(rawSecret);
+  });
+
+  it('rejects a provider response that echoes the server credential', async () => {
+    const rawSecret = 'AIzaSyTestSecretKey_RejectEchoedCredential';
+    const fakeFetch = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({
+          token: rawSecret,
+          expireTime: '2026-08-29T11:40:00.000Z',
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      );
+    });
+
+    const handler = createLocalGeminiSessionHandler({
+      auditEnabled: true,
+      apiKey: rawSecret,
+      expectedOrigin: localOrigin,
+      fetch: fakeFetch as unknown as typeof fetch,
+      now: () => Date.parse('2026-08-29T11:30:00.000Z'),
+    });
+
+    const response = await handler(createRequest());
+
+    expect(response.status).toBe(502);
+    expect(await response.json()).toEqual({
+      error: 'Assistant session is temporarily unavailable.',
+    });
   });
 
   it('enforces a bounded request body limit', async () => {
@@ -230,5 +299,80 @@ describe('local Gemini session boundary', () => {
     expect(response.status).toBe(413);
     const data = await response.json();
     expect(data).toEqual({ error: 'Payload too large.' });
+  });
+
+  it('keeps the public server gate off even when a key is configured', async () => {
+    const issue = vi.fn(async () => {
+      throw new Error('must not issue while disabled');
+    });
+    const handler = createLocalGeminiSessionHandler({
+      auditEnabled: false,
+      voiceEnabled: false,
+      apiKey: 'test-api-key',
+      expectedOrigin: localOrigin,
+      fetch: issue as unknown as typeof fetch,
+    });
+
+    const response = await handler(createRequest());
+
+    expect(response.status).toBe(404);
+    expect(issue).not.toHaveBeenCalled();
+  });
+
+  it('allows the public server gate explicitly without enabling local audit mode', async () => {
+    const fakeFetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            name: 'ephemeral-token-public-gate',
+            expireTime: '2026-08-29T11:40:00.000Z',
+          }),
+          { status: 200 },
+        ),
+    );
+    const handler = createLocalGeminiSessionHandler({
+      auditEnabled: false,
+      voiceEnabled: true,
+      apiKey: 'test-api-key',
+      expectedOrigin: localOrigin,
+      fetch: fakeFetch as unknown as typeof fetch,
+      now: () => Date.parse('2026-08-29T11:30:00.000Z'),
+    });
+
+    const response = await handler(createRequest());
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      accessToken: 'ephemeral-token-public-gate',
+      expiresAt: '2026-08-29T11:40:00.000Z',
+    });
+  });
+
+  it('fails closed when the provider returns an invalid expiry', async () => {
+    const fakeFetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            token: 'ephemeral-token-invalid-expiry',
+            expireTime: '2026-08-29T11:41:00.000Z',
+          }),
+          { status: 200 },
+        ),
+    );
+    const handler = createLocalGeminiSessionHandler({
+      auditEnabled: true,
+      apiKey: 'test-api-key',
+      expectedOrigin: localOrigin,
+      fetch: fakeFetch as unknown as typeof fetch,
+      maxSessionDurationMs: 10 * 60_000,
+      now: () => Date.parse('2026-08-29T11:30:00.000Z'),
+    });
+
+    const response = await handler(createRequest());
+
+    expect(response.status).toBe(502);
+    expect(await response.json()).toEqual({
+      error: 'Assistant session is temporarily unavailable.',
+    });
   });
 });

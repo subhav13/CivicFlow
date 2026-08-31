@@ -84,7 +84,6 @@ export function ToolConfirmationModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="tool-confirmation-modal-heading"
-        aria-describedby="tool-confirmation-modal-message"
         data-testid="tool-confirmation-modal"
       >
         <div className="tool-confirmation-modal-header">
@@ -98,18 +97,6 @@ export function ToolConfirmationModal({
             Draft preview
           </span>
         </div>
-
-        <p
-          id="tool-confirmation-modal-message"
-          className="tool-confirmation-modal-message"
-        >
-          {confirmation.message}
-        </p>
-        <p className="tool-confirmation-modal-instructions">
-          This is the review screen for the proposed change. Say “I confirm
-          these details, add it” or choose Confirm and apply. To change
-          something, say “It&apos;s not correct” or choose Need correction.
-        </p>
 
         <dl className="tool-confirmation-modal-fields">
           {confirmation.draft.fields.map((field) => (
@@ -139,7 +126,7 @@ export function ToolConfirmationModal({
             onClick={onConfirm}
             disabled={status !== 'confirming'}
           >
-            Confirm and apply
+            Save change
           </button>
           <button
             type="button"

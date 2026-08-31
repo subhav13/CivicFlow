@@ -172,6 +172,8 @@ export function createAssistantRuntime(
   const controller = createAssistantController({
     client,
     toolBridge,
+    currentToolSurface: surface,
+    waitForToolSurface: () => registryManager.waitForSync(),
     microphone,
     audioOutput,
     lifecycleTarget,

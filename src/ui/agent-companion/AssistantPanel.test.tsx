@@ -257,7 +257,7 @@ describe('Phase 4 unified assistant panel', () => {
     });
 
     expect(
-      screen.getByText('Confirm adding Acme Dental income.'),
+      screen.getByRole('button', { name: 'Save change' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent(/confirm/i);
     expect(controller.confirmToolCall).not.toHaveBeenCalled();
@@ -267,7 +267,7 @@ describe('Phase 4 unified assistant panel', () => {
       ),
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm and apply' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save change' }));
     expect(controller.confirmToolCall).toHaveBeenCalledWith('call-income-1');
   });
 
@@ -403,7 +403,7 @@ describe('Phase 4 unified assistant panel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Need correction' }));
 
     expect(
-      screen.getByText('Confirm adding Acme Health income.'),
+      screen.getByRole('button', { name: 'Save change' }),
     ).toBeInTheDocument();
   });
 
@@ -495,15 +495,16 @@ describe('Phase 4 unified assistant panel', () => {
       });
     });
 
-    expect(screen.getByText('Confirm adding Acme income.')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Save change' }),
+    ).toBeInTheDocument();
 
     fireEvent.click(
       screen.getByRole('button', { name: /clear conversation/i }),
     );
 
-    expect(screen.getByText('Confirm adding Acme income.')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Confirm and apply' }),
+      screen.getByRole('button', { name: 'Save change' }),
     ).toBeInTheDocument();
   });
 

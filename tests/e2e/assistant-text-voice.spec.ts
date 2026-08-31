@@ -1,4 +1,59 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+
+async function expectViewportAnchoredAfterScroll(page: Page) {
+  const host = page.locator('.assistant-companion-host');
+  await expect(host).toBeVisible();
+  const before = await host.boundingBox();
+  expect(before).not.toBeNull();
+
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  const after = await host.boundingBox();
+  const viewport = page.viewportSize();
+  expect(after).not.toBeNull();
+  expect(viewport).not.toBeNull();
+  expect(after!.x).toBeCloseTo(before!.x, 0);
+  expect(after!.y).toBeCloseTo(before!.y, 0);
+  expect(after!.x + after!.width).toBeLessThanOrEqual(viewport!.width);
+  expect(after!.y + after!.height).toBeLessThanOrEqual(viewport!.height);
+}
+
+async function expectFullyInsideViewport(
+  page: Page,
+  locator: ReturnType<Page['locator']>,
+) {
+  const box = await locator.boundingBox();
+  const viewport = page.viewportSize();
+  expect(box).not.toBeNull();
+  expect(viewport).not.toBeNull();
+  expect(box!.x).toBeGreaterThanOrEqual(0);
+  expect(box!.y).toBeGreaterThanOrEqual(0);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(viewport!.width);
+  expect(box!.y + box!.height).toBeLessThanOrEqual(viewport!.height);
+}
+
+async function expectExpandedSurfacesStayViewportAnchored(page: Page) {
+  await expectViewportAnchoredAfterScroll(page);
+
+  await page.getByTestId('assistant-launcher').click();
+  const companion = page.getByRole('dialog', { name: 'Agent Companion' });
+  await expect(companion).toBeVisible();
+  await expectFullyInsideViewport(page, companion);
+  await page.getByRole('button', { name: 'Close Agent Companion' }).click();
+  await expect(companion).not.toBeVisible();
+
+  await page.getByRole('button', { name: 'View agent activity' }).click();
+  const activity = page.getByRole('region', { name: 'Agent activity' });
+  await expect(activity).toBeVisible();
+  await expectFullyInsideViewport(page, activity);
+  const before = await activity.boundingBox();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const after = await activity.boundingBox();
+  expect(before).not.toBeNull();
+  expect(after).not.toBeNull();
+  expect(after!.x).toBeCloseTo(before!.x, 0);
+  expect(after!.y).toBeCloseTo(before!.y, 0);
+  await expectFullyInsideViewport(page, activity);
+}
 
 test.describe('Phase 4 unified assistant companion', () => {
   test('shows the themed text-only fallback when no secure session is enabled', async ({
@@ -57,5 +112,17 @@ test.describe('Phase 4 unified assistant companion', () => {
     await expect(
       dialog.getByRole('button', { name: /read current section/i }),
     ).toBeEnabled();
+  });
+
+  test('keeps the companion anchored to the viewport through desktop and mobile document scroll', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto('/');
+    await expectExpandedSurfacesStayViewportAnchored(page);
+
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto('/');
+    await expectExpandedSurfacesStayViewportAnchored(page);
   });
 });

@@ -108,7 +108,7 @@ describe('Phase 4 controller confirmation boundary', () => {
     }
   });
 
-  it('assembles fragmented voice approval before confirming the pending mutation', async () => {
+  it('does not let fragmented voice approval apply a pending mutation', async () => {
     const harness = createHarness();
     await harness.controller.connect();
 
@@ -134,12 +134,43 @@ describe('Phase 4 controller confirmation boundary', () => {
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
 
+    expect(harness.toolBridge.executeToolCall).toHaveBeenCalledTimes(1);
+    await harness.controller.confirmToolCall(call.callId);
     expect(harness.toolBridge.executeToolCall).toHaveBeenLastCalledWith(call, {
       confirmed: true,
     });
   });
 
-  it('confirms one exact pending call for fragmented punctuated approval', async () => {
+  it('clears an ignored affirmative before forwarding a later correction', async () => {
+    const harness = createHarness();
+    const events: AssistantControllerEvent[] = [];
+    harness.controller.subscribe((event) => events.push(event));
+    await harness.controller.connect();
+
+    harness.client.emit({
+      type: 'function_call',
+      calls: [
+        {
+          callId: 'call-clean-correction',
+          name: 'add_income_source',
+          argumentsJson: '{}',
+        },
+      ],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    harness.controller.sendText('I confirm these details, add it');
+    harness.controller.sendText('Change employer to Acme Dental.');
+
+    expect(events).toContainEqual({
+      type: 'revision_requested',
+      callId: 'call-clean-correction',
+      toolName: 'add_income_source',
+      correction: 'Change employer to Acme Dental.',
+    });
+  });
+
+  it('requires an explicit controller confirmation after fragmented punctuated approval', async () => {
     const harness = createHarness();
     await harness.controller.connect();
 
@@ -165,7 +196,8 @@ describe('Phase 4 controller confirmation boundary', () => {
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(harness.toolBridge.executeToolCall).toHaveBeenCalledTimes(2);
+    expect(harness.toolBridge.executeToolCall).toHaveBeenCalledTimes(1);
+    await harness.controller.confirmToolCall(call.callId);
     expect(harness.toolBridge.executeToolCall).toHaveBeenNthCalledWith(
       2,
       call,
@@ -355,7 +387,7 @@ describe('Phase 4 controller confirmation boundary', () => {
     ).not.toContain(queuedCall.argumentsJson);
   });
 
-  it('uses the exact pending call for final voice and typed affirmatives', async () => {
+  it('keeps final voice and typed affirmatives pending until explicit confirmation', async () => {
     const harness = createHarness();
     const events: AssistantControllerEvent[] = [];
     harness.controller.subscribe((event) => events.push(event));
@@ -386,10 +418,15 @@ describe('Phase 4 controller confirmation boundary', () => {
       calls: [{ ...call, callId: 'call-typed-affirmative' }],
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
-    harness.controller.sendText('yes');
+    harness.controller.sendText('I confirm these details, add it');
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(harness.client.sendText).not.toHaveBeenCalled();
+    expect(harness.toolBridge.executeToolCall).toHaveBeenLastCalledWith(
+      { ...call, callId: 'call-typed-affirmative' },
+      {},
+    );
+    await harness.controller.confirmToolCall('call-typed-affirmative');
     expect(harness.toolBridge.executeToolCall).toHaveBeenLastCalledWith(
       { ...call, callId: 'call-typed-affirmative' },
       { confirmed: true },

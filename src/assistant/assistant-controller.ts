@@ -1,8 +1,12 @@
-import type { ToolBridgeResponse, ToolCall } from './types';
+import type { CurrentToolSurface, ToolBridgeResponse, ToolCall } from './types';
 import type { GeminiToolBridge } from './gemini-tool-bridge';
 import type { GeminiLiveClient, GeminiLiveEvent } from './gemini-live-client';
 import { classifyConfirmationReply } from './confirmation-reply';
 import { mergeLiveTextChunks } from './live-turn-assembler';
+import {
+  createToolSurfaceFreshnessCoordinator,
+  type ToolSurfaceFreshnessCoordinator,
+} from './tool-surface-freshness';
 import type { ConfirmationDraft } from './tool-confirmation-view-model';
 import {
   createInitialSessionState,
@@ -68,6 +72,8 @@ export type AssistantControllerEvent =
 export interface AssistantControllerDependencies {
   client: GeminiLiveClient;
   toolBridge: GeminiToolBridge;
+  currentToolSurface?: CurrentToolSurface;
+  waitForToolSurface?: () => Promise<void>;
   microphone?: MicrophoneProvider;
   audioOutput?: AudioOutput;
   lifecycleTarget?: PageLifecycleTarget;
@@ -188,7 +194,10 @@ export function createAssistantController(
   let clientUnsubscribe: (() => void) | undefined;
   let pagehideListener: (() => void) | undefined;
   let turnInterrupted = false;
+  let providerTurnActive = false;
   let pendingReplyText = '';
+  let shouldResumeMicrophoneAfterRefresh = false;
+  let freshnessCoordinator: ToolSurfaceFreshnessCoordinator | undefined;
   interface QueuedCall {
     call: ToolCall;
     generation: number;
@@ -200,6 +209,7 @@ export function createAssistantController(
   }
   const pendingConfirmations = new Map<string, PendingConfirmation>();
   let isProcessingCalls = false;
+  let activeToolExecutionCount = 0;
   const emit = (event: AssistantControllerEvent) => {
     for (const listener of listeners) {
       listener(event);
@@ -281,6 +291,7 @@ export function createAssistantController(
     callQueue.length = 0;
     pendingConfirmations.clear();
     turnInterrupted = false;
+    providerTurnActive = false;
     pendingReplyText = '';
   };
 
@@ -305,6 +316,53 @@ export function createAssistantController(
     }
   };
 
+  const markOutboundTurnIfSent = (send: () => unknown): void => {
+    if (!dependencies.client.isConnected()) return;
+    try {
+      // The current public client contract is void-returning for compatibility;
+      // the first-party client returns false when its socket rejected a send.
+      if (send() !== false) providerTurnActive = true;
+    } catch {
+      // A transport failure is reported by the client lifecycle; do not hold a
+      // critical section open for a turn that was not accepted.
+    }
+  };
+
+  const startMicrophoneCapture = async (): Promise<void> => {
+    if (!dependencies.microphone || isDisposed) return;
+    stopMicrophoneCapture();
+    try {
+      const stream = await dependencies.microphone.requestStream();
+      if (isDisposed || state.status !== 'connected') {
+        for (const track of stream.getTracks()) {
+          track.stop();
+        }
+        return;
+      }
+      activeStream = stream;
+      unsubscribeStream = stream.subscribe((data, mimeType) => {
+        if (
+          activeStream !== stream ||
+          isDisposed ||
+          state.status !== 'connected'
+        ) {
+          return;
+        }
+        markOutboundTurnIfSent(() =>
+          dependencies.client.sendAudio(data, mimeType),
+        );
+      });
+    } catch {
+      stopMicrophoneCapture();
+      state = transitionSessionState(state, {
+        type: 'error',
+        message: 'Microphone permission was denied.',
+        recoverable: true,
+      });
+      emit({ type: 'state', state });
+    }
+  };
+
   const processCallQueue = async () => {
     if (isProcessingCalls || pendingConfirmations.size > 0) return;
     isProcessingCalls = true;
@@ -314,6 +372,7 @@ export function createAssistantController(
         if (!isSessionActive(item.generation)) {
           continue;
         }
+        activeToolExecutionCount += 1;
         try {
           const response = await dependencies.toolBridge.executeToolCall(
             item.call,
@@ -352,10 +411,13 @@ export function createAssistantController(
             },
           });
           emitDeliveryFailure(item.call, delivered);
+        } finally {
+          activeToolExecutionCount -= 1;
         }
       }
     } finally {
       isProcessingCalls = false;
+      freshnessCoordinator?.notifySafeBoundary();
     }
   };
 
@@ -372,6 +434,50 @@ export function createAssistantController(
       }
     }
   };
+
+  const reconnect = dependencies.client.reconnect?.bind(dependencies.client);
+  if (dependencies.currentToolSurface && reconnect) {
+    freshnessCoordinator = createToolSurfaceFreshnessCoordinator({
+      surface: dependencies.currentToolSurface,
+      reconnect: () => reconnect(),
+      isSafeToRefresh: () =>
+        state.status === 'connected' &&
+        !providerTurnActive &&
+        !isProcessingCalls &&
+        activeToolExecutionCount === 0 &&
+        pendingConfirmations.size === 0,
+      onRefreshStart: () => {
+        shouldResumeMicrophoneAfterRefresh = activeStream !== undefined;
+        stopMicrophoneCapture();
+        dependencies.audioOutput?.stop();
+      },
+      onRefreshComplete: async () => {
+        if (!shouldResumeMicrophoneAfterRefresh) return;
+        shouldResumeMicrophoneAfterRefresh = false;
+        await startMicrophoneCapture();
+      },
+      onRefreshFailure: () => {
+        if (isDisposed || state.status !== 'connected') return;
+        shouldResumeMicrophoneAfterRefresh = false;
+        freshnessCoordinator?.stop();
+        stopMicrophoneCapture();
+        dependencies.audioOutput?.stop();
+        dependencies.client.disconnect();
+        invalidateSession();
+        state = transitionSessionState(state, {
+          type: 'error',
+          message: 'Assistant session refresh failed. Please reconnect.',
+          recoverable: true,
+        });
+        emit({ type: 'state', state });
+        emit({
+          type: 'error',
+          kind: 'network',
+          message: 'Assistant session refresh failed. Please reconnect.',
+        });
+      },
+    });
+  }
 
   const settleSupersededQueuedCalls = (generation: number): void => {
     for (const item of callQueue) {
@@ -448,6 +554,7 @@ export function createAssistantController(
       toolName: pending.call.name,
     });
 
+    activeToolExecutionCount += 1;
     try {
       const response = await dependencies.toolBridge.executeToolCall(
         pending.call,
@@ -518,7 +625,9 @@ export function createAssistantController(
       });
       emitDeliveryFailure(pending.call, delivered);
     } finally {
+      activeToolExecutionCount -= 1;
       void processCallQueue();
+      freshnessCoordinator?.notifySafeBoundary();
     }
   };
 
@@ -529,7 +638,7 @@ export function createAssistantController(
     const decision = classifyConfirmationReply(pendingReplyText, { final });
     if (decision.kind === 'interim') return;
     if (decision.kind === 'affirmative') {
-      void confirmToolCall(pending.call.callId);
+      pendingReplyText = '';
       return;
     }
     if (decision.text) requestRevision(pending, decision.text);
@@ -539,6 +648,8 @@ export function createAssistantController(
     if (isDisposed) return;
     if (event.type === 'error') {
       invalidateSession();
+      freshnessCoordinator?.stop();
+      shouldResumeMicrophoneAfterRefresh = false;
       stopMicrophoneCapture();
       dependencies.audioOutput?.stop();
       dependencies.client.disconnect();
@@ -563,13 +674,16 @@ export function createAssistantController(
 
     switch (event.type) {
       case 'text':
+        providerTurnActive = true;
         emit({ type: 'text', text: event.text });
         break;
       case 'audio':
+        providerTurnActive = true;
         dependencies.audioOutput?.play(event.data, event.mimeType);
         emit({ type: 'audio', data: event.data, mimeType: event.mimeType });
         break;
       case 'transcript':
+        providerTurnActive = true;
         emit({
           type: 'transcript',
           speaker: event.speaker,
@@ -581,16 +695,20 @@ export function createAssistantController(
         }
         break;
       case 'turn_interrupted':
+        providerTurnActive = true;
         turnInterrupted = true;
         break;
       case 'turn_complete':
+        providerTurnActive = false;
         emit({
           type: 'turn_complete',
           ...(turnInterrupted ? { interrupted: true } : {}),
         });
         turnInterrupted = false;
+        freshnessCoordinator?.notifySafeBoundary();
         break;
       case 'function_call': {
+        providerTurnActive = true;
         const callGeneration = sessionGeneration;
         for (const call of event.calls) {
           callQueue.push({ call, generation: callGeneration });
@@ -606,6 +724,8 @@ export function createAssistantController(
   if (dependencies.lifecycleTarget) {
     pagehideListener = () => {
       invalidateSession();
+      freshnessCoordinator?.stop();
+      shouldResumeMicrophoneAfterRefresh = false;
       stopMicrophoneCapture();
       dependencies.audioOutput?.stop();
       dependencies.client.disconnect();
@@ -617,21 +737,33 @@ export function createAssistantController(
 
   const connectInternal = async (eventType: 'connect' | 'retry') => {
     if (isDisposed) return;
+    freshnessCoordinator?.stop();
     invalidateSession();
     const currentGeneration = sessionGeneration;
     state = transitionSessionState(state, { type: eventType });
     emit({ type: 'state', state });
     try {
+      await dependencies.waitForToolSurface?.();
+      if (isDisposed || currentGeneration !== sessionGeneration) {
+        return;
+      }
+      await freshnessCoordinator?.start();
+      if (isDisposed || currentGeneration !== sessionGeneration) {
+        return;
+      }
       await dependencies.client.connect();
       if (isDisposed || currentGeneration !== sessionGeneration) {
         return;
       }
       state = transitionSessionState(state, { type: 'connected' });
       emit({ type: 'state', state });
+      freshnessCoordinator?.notifySafeBoundary();
     } catch {
       if (isDisposed || currentGeneration !== sessionGeneration) {
         return;
       }
+      freshnessCoordinator?.stop();
+      shouldResumeMicrophoneAfterRefresh = false;
       state = transitionSessionState(state, {
         type: 'error',
         message: 'Assistant connection failed.',
@@ -653,6 +785,8 @@ export function createAssistantController(
     disconnect(): void {
       if (isDisposed) return;
       invalidateSession();
+      freshnessCoordinator?.stop();
+      shouldResumeMicrophoneAfterRefresh = false;
       stopMicrophoneCapture();
       dependencies.audioOutput?.stop();
       dependencies.client.disconnect();
@@ -662,37 +796,14 @@ export function createAssistantController(
 
     async startMicrophone(): Promise<void> {
       if (!dependencies.microphone || isDisposed) return;
-      stopMicrophoneCapture();
-      try {
-        const stream = await dependencies.microphone.requestStream();
-        if (isDisposed || state.status !== 'connected') {
-          for (const track of stream.getTracks()) {
-            track.stop();
-          }
-          return;
-        }
-        activeStream = stream;
-        unsubscribeStream = stream.subscribe((data, mimeType) => {
-          if (
-            activeStream !== stream ||
-            isDisposed ||
-            state.status !== 'connected'
-          )
-            return;
-          dependencies.client.sendAudio(data, mimeType);
-        });
-      } catch {
-        stopMicrophoneCapture();
-        state = transitionSessionState(state, {
-          type: 'error',
-          message: 'Microphone permission was denied.',
-          recoverable: true,
-        });
-        emit({ type: 'state', state });
+      if (freshnessCoordinator && !(await freshnessCoordinator.beforeTurn())) {
+        return;
       }
+      await startMicrophoneCapture();
     },
 
     stopMicrophone(): void {
+      shouldResumeMicrophoneAfterRefresh = false;
       stopMicrophoneCapture();
     },
 
@@ -706,7 +817,15 @@ export function createAssistantController(
         handlePendingReply(text, true);
         return;
       }
-      dependencies.client.sendText(text);
+      if (freshnessCoordinator) {
+        void freshnessCoordinator.beforeTurn().then((canProceed) => {
+          if (canProceed && isSessionActive(sessionGeneration)) {
+            markOutboundTurnIfSent(() => dependencies.client.sendText(text));
+          }
+        });
+        return;
+      }
+      markOutboundTurnIfSent(() => dependencies.client.sendText(text));
     },
 
     confirmToolCall,
@@ -734,6 +853,8 @@ export function createAssistantController(
     dispose(): void {
       isDisposed = true;
       invalidateSession();
+      freshnessCoordinator?.dispose();
+      shouldResumeMicrophoneAfterRefresh = false;
       stopMicrophoneCapture();
       dependencies.audioOutput?.stop();
       dependencies.client.disconnect();

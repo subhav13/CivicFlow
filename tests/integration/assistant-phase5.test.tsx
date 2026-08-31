@@ -193,7 +193,7 @@ describe('Phase 5 local assistant integration matrix', () => {
 
       await waitFor(() =>
         expect(
-          screen.getByRole('button', { name: 'Confirm and apply' }),
+          screen.getByRole('button', { name: 'Save change' }),
         ).toBeInTheDocument(),
       );
       expect(executeTool).not.toHaveBeenCalled();
@@ -204,7 +204,7 @@ describe('Phase 5 local assistant integration matrix', () => {
         harness.store.getState().application.householdMembers,
       ).toHaveLength(0);
 
-      screen.getByRole('button', { name: 'Confirm and apply' }).click();
+      screen.getByRole('button', { name: 'Save change' }).click();
       await waitFor(() => expect(executeTool).toHaveBeenCalledTimes(1));
       await waitFor(() =>
         expect(
@@ -292,7 +292,7 @@ describe('Phase 5 local assistant integration matrix', () => {
 
       await waitFor(() =>
         expect(
-          screen.getByRole('button', { name: 'Confirm and apply' }),
+          screen.getByRole('button', { name: 'Save change' }),
         ).toBeInTheDocument(),
       );
       expect(harness.store.getState().application.revision).toBe(
@@ -302,7 +302,7 @@ describe('Phase 5 local assistant integration matrix', () => {
         0,
       );
 
-      screen.getByRole('button', { name: 'Confirm and apply' }).click();
+      screen.getByRole('button', { name: 'Save change' }).click();
       await waitFor(() =>
         expect(screen.getByTestId('operation-status')).toHaveAttribute(
           'data-phase',
@@ -363,10 +363,10 @@ describe('Phase 5 local assistant integration matrix', () => {
 
       await waitFor(() =>
         expect(
-          screen.getByRole('button', { name: 'Confirm and apply' }),
+          screen.getByRole('button', { name: 'Save change' }),
         ).toBeInTheDocument(),
       );
-      screen.getByRole('button', { name: 'Confirm and apply' }).click();
+      screen.getByRole('button', { name: 'Save change' }).click();
       await waitFor(() =>
         expect(
           harness.store.getState().application.incomeSources[0],
@@ -608,9 +608,7 @@ describe('Phase 5 local assistant integration matrix', () => {
         'Acme Dental',
       );
 
-      fireEvent.click(
-        screen.getByRole('button', { name: 'Confirm and apply' }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: 'Save change' }));
       await waitFor(() =>
         expect(harness.store.getState().application.incomeSources).toHaveLength(
           1,
@@ -670,9 +668,7 @@ describe('Phase 5 local assistant integration matrix', () => {
       await waitFor(() =>
         expect(screen.getByTestId('tool-confirmation-modal')).toBeVisible(),
       );
-      fireEvent.click(
-        screen.getByRole('button', { name: 'Confirm and apply' }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: 'Save change' }));
 
       await waitFor(() =>
         expect(

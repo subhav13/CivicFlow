@@ -21,6 +21,124 @@ describe('ModelContextPort Contract', () => {
       unsubscribe();
     });
 
+    it('subscribes and unsubscribes through the browser toolchange event boundary', () => {
+      const listener = vi.fn();
+      const listeners = new Set<() => void>();
+      const addEventListener = vi.fn(
+        (type: 'toolchange', eventListener: () => void) => {
+          if (type === 'toolchange') listeners.add(eventListener);
+        },
+      );
+      const removeEventListener = vi.fn(
+        (type: 'toolchange', eventListener: () => void) => {
+          if (type === 'toolchange') listeners.delete(eventListener);
+        },
+      );
+      const browserContext = {
+        registerTool: vi.fn(async () => {}),
+        getTools: vi.fn(async () => []),
+        executeTool: vi.fn(async () => ''),
+        addEventListener,
+        removeEventListener,
+      };
+
+      Object.defineProperty(document, 'modelContext', {
+        value: browserContext,
+        configurable: true,
+        writable: true,
+      });
+
+      try {
+        const unsubscribe = new BrowserModelContextPort().subscribeToolChange(
+          listener,
+        );
+
+        expect(addEventListener).toHaveBeenCalledWith('toolchange', listener);
+        for (const eventListener of listeners) eventListener();
+        expect(listener).toHaveBeenCalledOnce();
+        unsubscribe();
+        expect(removeEventListener).toHaveBeenCalledWith(
+          'toolchange',
+          listener,
+        );
+        for (const eventListener of listeners) eventListener();
+        expect(listener).toHaveBeenCalledOnce();
+      } finally {
+        Object.defineProperty(document, 'modelContext', {
+          value: undefined,
+          configurable: true,
+          writable: true,
+        });
+      }
+    });
+
+    it('does not throw when browser toolchange subscription is unavailable', () => {
+      const browserContext = {
+        registerTool: vi.fn(async () => {}),
+        getTools: vi.fn(async () => []),
+        executeTool: vi.fn(async () => ''),
+      };
+
+      Object.defineProperty(document, 'modelContext', {
+        value: browserContext,
+        configurable: true,
+        writable: true,
+      });
+
+      try {
+        const port = new BrowserModelContextPort();
+        const unsubscribe = port.subscribeToolChange(vi.fn());
+
+        expect(typeof unsubscribe).toBe('function');
+        expect(() => unsubscribe()).not.toThrow();
+      } finally {
+        Object.defineProperty(document, 'modelContext', {
+          value: undefined,
+          configurable: true,
+          writable: true,
+        });
+      }
+    });
+
+    it('does not throw when browser toolchange subscription throws', () => {
+      const addEventListener = vi.fn(() => {
+        throw new TypeError('toolchange events are restricted');
+      });
+      const removeEventListener = vi.fn(() => {
+        throw new TypeError('toolchange events are restricted');
+      });
+      const browserContext = {
+        registerTool: vi.fn(async () => {}),
+        getTools: vi.fn(async () => []),
+        executeTool: vi.fn(async () => ''),
+        addEventListener,
+        removeEventListener,
+      };
+
+      Object.defineProperty(document, 'modelContext', {
+        value: browserContext,
+        configurable: true,
+        writable: true,
+      });
+
+      try {
+        const port = new BrowserModelContextPort();
+        let unsubscribe: (() => void) | undefined;
+
+        expect(() => {
+          unsubscribe = port.subscribeToolChange(vi.fn());
+        }).not.toThrow();
+        expect(typeof unsubscribe).toBe('function');
+        expect(() => unsubscribe?.()).not.toThrow();
+      } finally {
+        Object.defineProperty(document, 'modelContext', {
+          value: undefined,
+          configurable: true,
+          writable: true,
+        });
+      }
+    });
+
     it('never throws on unavailable browser execution', async () => {
       const port = new BrowserModelContextPort();
       await expect(

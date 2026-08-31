@@ -2,7 +2,7 @@ import { sites } from '@openai/sites-vite-plugin';
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv } from 'vite';
 import type { Plugin } from 'vite';
-import { createLocalGeminiSessionHandler } from './server/gemini-local-session';
+import { createLocalGeminiSessionHandler } from './server/gemini-local-session.ts';
 
 function localGeminiSessionPlugin(env: Record<string, string>): Plugin {
   return {
@@ -17,8 +17,13 @@ function localGeminiSessionPlugin(env: Record<string, string>): Plugin {
         process.env.CIVICFLOW_LIVE_AUDIT !== undefined
           ? process.env.CIVICFLOW_LIVE_AUDIT === '1'
           : env.CIVICFLOW_LIVE_AUDIT === '1';
+      const voiceEnabled =
+        process.env.CIVICFLOW_VOICE_ENABLED !== undefined
+          ? process.env.CIVICFLOW_VOICE_ENABLED === '1'
+          : env.CIVICFLOW_VOICE_ENABLED === '1';
       const handler = createLocalGeminiSessionHandler({
         auditEnabled,
+        voiceEnabled,
         expectedOrigin,
         apiKey: process.env.GEMINI_API_KEY || env.GEMINI_API_KEY,
       });

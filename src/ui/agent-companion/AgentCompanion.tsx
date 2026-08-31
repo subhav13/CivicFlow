@@ -39,7 +39,13 @@ function usesCompactCompanionLayout(): boolean {
     window.matchMedia(COMPACT_COMPANION_QUERY).matches
   );
 }
-function ActivityItemView({ entry }: { entry: ActivityEntry }) {
+function ActivityItemView({
+  entry,
+  testId,
+}: {
+  entry: ActivityEntry;
+  testId?: string;
+}) {
   const isAgent = entry.source === 'webmcp';
   const sourceText = isAgent ? 'Agent action' : 'Human action';
   const hasRevision =
@@ -55,6 +61,7 @@ function ActivityItemView({ entry }: { entry: ActivityEntry }) {
       data-source={entry.source}
       data-status={entry.status}
       data-section={entry.section}
+      data-testid={testId}
     >
       <div className="activity-entry-header">
         <span className="activity-source-label">{sourceText}</span>
@@ -358,6 +365,7 @@ export function AgentCompanion({
   const closeRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<AssistantPanelHandle>(null);
   const [isListening, setIsListening] = useState(false);
+  const [isActivityOpen, setIsActivityOpen] = useState(false);
   const wasOpen = useRef(false);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
@@ -375,6 +383,21 @@ export function AgentCompanion({
     useState(false);
   const pendingConfirmationRef = useRef(pendingConfirmation);
   pendingConfirmationRef.current = pendingConfirmation;
+  const agentActivity = activity
+    .filter((entry) => entry.source === 'webmcp')
+    .map((entry, index) => ({ entry, index }))
+    .sort((left, right) => {
+      const newestFirst = (right.entry.occurredAt ?? '').localeCompare(
+        left.entry.occurredAt ?? '',
+      );
+      return newestFirst || left.index - right.index;
+    })
+    .slice(0, 20)
+    .map(({ entry }) => entry);
+
+  useEffect(() => {
+    if (isOpen) setIsActivityOpen(false);
+  }, [isOpen]);
 
   const handleAssistantControllerEvent = (event: AssistantControllerEvent) => {
     switch (event.type) {
@@ -570,6 +593,7 @@ export function AgentCompanion({
               return;
             }
             onDismissGuide?.();
+            setIsActivityOpen(false);
             onOpen();
           }}
           aria-expanded={isOpen}
@@ -582,6 +606,58 @@ export function AgentCompanion({
             ✦
           </span>
         </button>
+
+        <div className="agent-activity-disclosure">
+          <button
+            type="button"
+            className="agent-activity-disclosure-trigger"
+            aria-expanded={isActivityOpen}
+            aria-controls="agent-activity-disclosure-panel"
+            onClick={() => {
+              if (isActivityOpen) {
+                setIsActivityOpen(false);
+                return;
+              }
+              onClose();
+              setIsActivityOpen(true);
+            }}
+          >
+            View agent activity
+          </button>
+          {isActivityOpen ? (
+            <section
+              id="agent-activity-disclosure-panel"
+              className="agent-activity-disclosure-panel"
+              aria-label="Agent activity"
+            >
+              <div className="agent-activity-disclosure-heading">
+                <h2>Agent activity</h2>
+                <button
+                  type="button"
+                  aria-label="Close agent activity"
+                  onClick={() => setIsActivityOpen(false)}
+                >
+                  ×
+                </button>
+              </div>
+              {agentActivity.length > 0 ? (
+                <ul className="activity-list" aria-label="Agent actions">
+                  {agentActivity.map((entry) => (
+                    <ActivityItemView
+                      key={entry.id}
+                      entry={entry}
+                      testId="agent-activity-entry"
+                    />
+                  ))}
+                </ul>
+              ) : (
+                <p className="agent-activity-empty">
+                  No agent activity recorded yet.
+                </p>
+              )}
+            </section>
+          ) : null}
+        </div>
 
         <aside
           className={`companion-panel assistant-surface${isOpen ? ' companion-panel--open' : ''}`}

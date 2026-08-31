@@ -10,6 +10,8 @@ import {
 import type { CurrentToolSurface } from '../../src/assistant/types';
 import type { LiveSocket } from '../../src/assistant/gemini-live-client';
 import { createDefaultModelContextPort } from '../../src/webmcp/in-process-model-context-port';
+import { FakeModelContextPort } from '../../src/webmcp/fake-model-context-port';
+import { BrowserModelContextPort } from '../../src/webmcp/browser-model-context-port';
 class FakeLiveSocket implements LiveSocket {
   sent: string[] = [];
   closed = false;
@@ -215,6 +217,138 @@ describe('local Live runtime', () => {
     expect(setupMessage.setup?.tools?.[0]?.functionDeclarations).toEqual([
       expect.objectContaining({ name: 'read_current_section' }),
     ]);
+  });
+
+  it('uses exactly the latest static/contextual declarations on one bounded replacement socket', async () => {
+    const staticTools = [
+      'get_application_progress',
+      'navigate_to_section',
+      'get_next_actions',
+      'add_household_member',
+      'add_income_source',
+      'set_current_coverage',
+      'list_uploaded_documents',
+    ].map((name) => ({
+      name,
+      title: name,
+      description: `Description for ${name}`,
+      inputSchema: { type: 'object', properties: {} },
+    }));
+    const contextualTool = {
+      name: 'update_income_source',
+      title: 'Update income source',
+      description: 'Update the selected income source',
+      inputSchema: {
+        type: 'object',
+        properties: { employerName: { type: 'string' } },
+      },
+    };
+    let snapshotIndex = 0;
+    const surface: CurrentToolSurface = {
+      snapshot: vi.fn(async () =>
+        snapshotIndex++ === 0 ? staticTools : [...staticTools, contextualTool],
+      ),
+      execute: vi.fn(async () => '{}'),
+      subscribe: vi.fn(() => () => {}),
+    };
+    const firstSocket = new FakeLiveSocket();
+    const secondSocket = new FakeLiveSocket();
+    const createSocket = vi
+      .fn<
+        (
+          url: string,
+          credential: { accessToken: string; expiresAt: string },
+        ) => LiveSocket
+      >()
+      .mockReturnValueOnce(firstSocket)
+      .mockReturnValueOnce(secondSocket);
+    const adapter = createLiveSocketAdapter({ surface, createSocket });
+    const client = createGeminiLiveClient({
+      issueEphemeralSession: vi
+        .fn()
+        .mockResolvedValueOnce({
+          accessToken: 'first-token',
+          expiresAt: '2026-08-29T12:00:00.000Z',
+        })
+        .mockResolvedValueOnce({
+          accessToken: 'second-token',
+          expiresAt: '2026-08-29T12:00:00.000Z',
+        }),
+      connectSocket: (credential) => adapter.connectSocket(credential),
+    });
+
+    await client.connect();
+    await client.reconnect?.();
+
+    const initialNames = JSON.parse(
+      firstSocket.sent[0],
+    ).setup.tools[0].functionDeclarations.map(
+      (tool: { name: string }) => tool.name,
+    );
+    const replacementNames = JSON.parse(
+      secondSocket.sent[0],
+    ).setup.tools[0].functionDeclarations.map(
+      (tool: { name: string }) => tool.name,
+    );
+    expect(initialNames).toEqual(staticTools.map((tool) => tool.name));
+    expect(replacementNames).toEqual([
+      ...staticTools.map((tool) => tool.name),
+      'update_income_source',
+    ]);
+    expect(firstSocket.sent).toHaveLength(1);
+    expect(secondSocket.sent).toHaveLength(1);
+    expect(firstSocket.closed).toBe(true);
+  });
+
+  it('refreshes the connected runtime after the registry exposes a contextual tool', async () => {
+    const store = createCivicFlowStore({
+      storage: null,
+      sessionStorage: null,
+    });
+    const port = new FakeModelContextPort();
+    const firstSocket = new FakeLiveSocket();
+    const secondSocket = new FakeLiveSocket();
+    const createSocket = vi
+      .fn<() => LiveSocket>()
+      .mockReturnValueOnce(firstSocket)
+      .mockReturnValueOnce(secondSocket);
+    const runtime = createAssistantRuntime({
+      store,
+      port,
+      createSocket,
+      fetch: vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              accessToken: 'runtime-token',
+              expiresAt: '2026-08-29T12:00:00.000Z',
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+      ) as unknown as typeof fetch,
+    });
+
+    await runtime.controller.connect();
+    const initialNames = JSON.parse(
+      firstSocket.sent[0],
+    ).setup.tools[0].functionDeclarations.map(
+      (tool: { name: string }) => tool.name,
+    );
+    expect(initialNames).toHaveLength(7);
+
+    store.navigateToSection('review');
+    await runtime.registryManager.waitForSync();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const replacementNames = JSON.parse(
+      secondSocket.sent[0],
+    ).setup.tools[0].functionDeclarations.map(
+      (tool: { name: string }) => tool.name,
+    );
+    expect(replacementNames).toContain('review_application');
+    expect(createSocket).toHaveBeenCalledTimes(2);
+    runtime.dispose();
   });
 
   it('sends setup with models/ resource model, AUDIO modality, transcription configs, and no submit/attest tools', async () => {
@@ -675,5 +809,60 @@ describe('local Live runtime', () => {
     expect(registeredTools.length).toBeGreaterThan(0);
 
     runtime.dispose();
+  });
+
+  it('issues a session and connects when browser toolchange observation is unavailable', async () => {
+    const store = createCivicFlowStore({
+      storage: null,
+      sessionStorage: null,
+    });
+    const registeredTools = new Map<string, Record<string, unknown>>();
+    const browserContext = {
+      registerTool: vi.fn(async (definition: Record<string, unknown>) => {
+        const tool = { ...definition };
+        delete tool.execute;
+        registeredTools.set(String(tool.name), tool);
+      }),
+      getTools: vi.fn(async () => Array.from(registeredTools.values())),
+      executeTool: vi.fn(async () => '{}'),
+    };
+    Object.defineProperty(document, 'modelContext', {
+      value: browserContext,
+      configurable: true,
+      writable: true,
+    });
+
+    const fetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            accessToken: 'degraded-observation-token',
+            expiresAt: '2026-08-30T12:00:00.000Z',
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+    ) as unknown as typeof globalThis.fetch;
+    const socket = new FakeLiveSocket();
+    const runtime = createAssistantRuntime({
+      store,
+      port: new BrowserModelContextPort(),
+      createSocket: async () => socket,
+      fetch,
+    });
+
+    try {
+      await runtime.controller.connect();
+
+      expect(fetch).toHaveBeenCalledOnce();
+      expect(socket.sent).toHaveLength(1);
+      expect(runtime.controller.getState()).toEqual({ status: 'connected' });
+    } finally {
+      runtime.dispose();
+      Object.defineProperty(document, 'modelContext', {
+        value: undefined,
+        configurable: true,
+        writable: true,
+      });
+    }
   });
 });
