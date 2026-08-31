@@ -7,7 +7,7 @@ typed tool surface. The product is a research demo: it is not a government
 service, an eligibility engine, or an enrollment submission.
 
 > Release status: the Phase 5 documentation package is committed and published
-> as Sites version 11 at <https://civicflow.codesm.chatgpt.site>. The
+> to the current CivicFlow Site at <https://civicflow.codesm.chatgpt.site>. The
 > application behavior remains the previously accepted Sites version 10
 > implementation; this release added documentation and the MIT license only.
 
@@ -35,20 +35,20 @@ attest the application.
 The accepted hosted identity is:
 
 - URL: <https://civicflow.codesm.chatgpt.site>
-- source identity: `12360d10be1c6df8ada56bfccbefda2abc81629c`
-- ChatGPT Sites version: `11` (documentation-only publication)
+- source identity: `0632c5d503a98b9d37e2450f2e9c1f3265698930`
+- ChatGPT Sites version: `10` (accepted application behavior)
 - recorded deployment environment revision: `2`
-- evidence state: application behavior hosted-tested and user-confirmed in
-  Sites version 10; version 11 published the documentation-only package on
-  2026-08-31 (Asia/Kolkata)
+- evidence state: hosted-tested and user-confirmed for the application behavior
+  on 2026-08-31 (Asia/Kolkata); the current Site also carries the
+  documentation-only Phase 5 publication
 
 Open the URL in ChatGPT's in-app browser, which supports WebMCP, or in Google
 Chrome 149 or later with `chrome://flags/#enable-webmcp-testing` enabled. The
 browser capability is optional for the human portal; when WebMCP is absent,
 the regular form UI remains the manual fallback.
 
-The URL above identifies the current Sites version 11 publication. Its
-application behavior is unchanged from the accepted version 10 runtime; any
+The URL above identifies the current Sites publication. Its application
+behavior is unchanged from the accepted version 10 runtime; any
 later source commit or Sites deployment needs its own exact identity and review
 record.
 
@@ -238,9 +238,10 @@ WebMCP was implemented. A draft is prepared at
 
 The application runtime behavior is traceable to source SHA
 `0632c5d503a98b9d37e2450f2e9c1f3265698930`, originally accepted as Sites
-version 10. The Phase 5 documentation and license package is source SHA
-`12360d10be1c6df8ada56bfccbefda2abc81629c`, committed and published as the
-documentation-only Sites version 11 at the same public URL.
+version 10. The Phase 5 documentation and license package is committed and
+published as a documentation-only update at the same public URL; its exact
+release commit and Sites deployment identity are recorded in the release
+evidence and feature ledger.
 
 The owner selected MIT, and the published package includes a standard root
 `LICENSE` with the project-level notice. The eligible public-source repository

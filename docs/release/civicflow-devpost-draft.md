@@ -10,10 +10,10 @@ mutate Devpost.
 
 ## Links and release identity
 
-- Live project: <https://civicflow.codesm.chatgpt.site> (documentation-only
-  Sites version 11, source SHA `12360d10be1c6df8ada56bfccbefda2abc81629c`,
-  environment revision 2; application behavior hosted-tested/user-confirmed
-  on the accepted version 10 identity on 2026-08-31 Asia/Kolkata).
+- Live project: <https://civicflow.codesm.chatgpt.site> (current
+  documentation-only Sites publication, environment revision 2; application
+  behavior hosted-tested/user-confirmed on the accepted version 10 identity on
+  2026-08-31 Asia/Kolkata).
 - Public code repository: **PUBLICATION PENDING — an eligible public GitHub,
   GitLab, or Bitbucket URL will be added only after the owner authorizes a
   commit and public push; the local candidate contains the owner-selected MIT
@@ -22,8 +22,8 @@ mutate Devpost.
   only after an owner-authorized upload verifies clear audio and duration under
   three minutes.**
 
-The live URL identifies the documentation-only Sites version 11 publication;
-its application behavior is unchanged from the accepted version 10 runtime.
+The live URL identifies the current documentation-only Sites publication; its
+application behavior is unchanged from the accepted version 10 runtime.
 
 ## What did you build?
 
@@ -109,8 +109,8 @@ The optional hosted Gemini path is routed through
 `server/gemini-session-core.ts` keep `GEMINI_API_KEY` server-only and return a
 short-lived constrained session credential. The client and the Worker use
 explicit gates that are off by default. The accepted application behavior is
-the version 10 runtime; the documentation candidate was published without
-application-source changes as Sites version 11.
+the version 10 runtime; the documentation package was published without
+application-source changes.
 
 ## Judging criteria map
 
