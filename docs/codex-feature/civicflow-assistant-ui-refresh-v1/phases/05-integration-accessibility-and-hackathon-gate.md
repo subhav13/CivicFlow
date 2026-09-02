@@ -124,3 +124,21 @@ build`, `npm run test:e2e` (35 tests), and `git diff --check` passed.
   protection; no provider token was issued during this diagnosis.
 - **Review state:** `validated`; the user reported local testing successful,
   final Sol review found no P0/P1 issue, and the complete release suite passed.
+
+## Post-validation speaking-orb release — 2026-09-02
+
+This follow-up stayed inside the existing UI allowlist. Provider audio events
+now update the launcher state, showing a glowing pulse ring and three-bar wave
+only while the companion is speaking. The default idle orb remains unchanged;
+mute, terminal controller events, and reduced-motion preferences are handled
+truthfully and without adding a new provider or session path.
+
+The complete `npm run verify` gate passed after the follow-up (53 unit files,
+520 unit tests; 19 contract files, 166 contract tests; 36 browser tests; secret
+scan, lint, typecheck, format, and build). The Sites source history was
+reconciled non-destructively and the exact merge commit
+`66467895827d5139bf0725dad49bcd8b5c7105d8` was pushed, saved as Sites version
+14, and deployed at `https://civicflow.codesm.chatgpt.site`. GitHub `main` was
+then synchronized through the GitHub connector with linear commit
+`9520829d1f91d1dc45068597a38561fee8f67f4b`; its tree matches the deployed
+speaking-orb source. No force update was used.
