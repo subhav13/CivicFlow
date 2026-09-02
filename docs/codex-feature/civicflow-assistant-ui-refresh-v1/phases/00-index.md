@@ -62,3 +62,16 @@ correction.
   collapsing below 300px or overlapping the launcher.
 - The user completed local testing and reported the experience working; final
   Codex review found no P0/P1 issue, so every phase is `validated`.
+
+## Speaking-orb release follow-up — 2026-09-02
+
+- The floating companion orb now shows a provider-audio-driven glowing ring and
+  three-bar wave while the agent is speaking; it is hidden at rest and falls
+  back to a static cue under reduced motion.
+- `npm run verify` passed after the change: 53 unit files/520 tests, 19
+  contract files/166 tests, and 36 browser tests, plus secret scan, lint,
+  typecheck, format, and build.
+- The Sites source history was reconciled without force push. Sites version 14
+  deployed merge commit `66467895827d5139bf0725dad49bcd8b5c7105d8` to
+  `https://civicflow.codesm.chatgpt.site`. GitHub `main` now carries the same
+  tree in connector commit `9520829d1f91d1dc45068597a38561fee8f67f4b`.

@@ -4,7 +4,7 @@
 
 - **Feature:** minimal floating assistant, minimized voice continuity, progressive disclosure, and compact onboarding
 - **Version:** v1
-- **Status:** `validated`
+- **Status:** `validated` (with the speaking-orb release follow-up deployed)
 - **Plan owner:** Codex `gpt-5.6-sol`, `high`
 - **Implementation route:** Codex self implementation using `gpt-5.6-terra`, `high`; no subagent was dispatched because no rough or critical blocker was observed
 - **Luna Max handoff:** native Codex `luna_max` (`gpt-5.6-luna`, `max`) is reserved for independent bounded review or critical corrections
@@ -39,6 +39,26 @@ Follow-up visual correction on 2026-08-30 fixed the absolute-surface sizing
 constraint that collapsed the open popover to a 42px header strip. The surface
 now uses content-fit height, anchors above the launcher, and retains its
 max-height/internal-scroll behavior.
+
+## Speaking-orb release follow-up — 2026-09-02
+
+The user requested a small judge-facing speaking cue for the already validated
+floating companion. Provider audio events now drive a glowing pulse ring and
+three-bar wave inside the orb while the companion is speaking. The cue is
+hidden at rest, clears on turn completion/error/disconnect/mute, exposes a
+truthful accessible label, and has a reduced-motion static fallback. This is a
+presentation-only extension; WebMCP, confirmation, privacy, media-cleanup, and
+human-only submission contracts are unchanged.
+
+The full local release gate passed after the change: `npm run verify` completed
+with 53 unit files/520 tests, 19 contract files/166 tests, 36 browser tests,
+secret scan, lint, typecheck, formatting, and build all green. The Sites source
+history was reconciled non-destructively by preserving the prior Sites tip
+`0ffc339502ca2febcc7bd18e53a3e9c99e087990` and creating merge commit
+`66467895827d5139bf0725dad49bcd8b5c7105d8`; no force push was used. That exact
+commit was pushed to the Sites-managed repository, saved as Sites version 14,
+and deployed successfully to the public Site:
+`https://civicflow.codesm.chatgpt.site`.
 
 Local dev launch note: the session broker keeps an exact origin allowlist. When
 serving the preview at `http://127.0.0.1:5173`, start it with
