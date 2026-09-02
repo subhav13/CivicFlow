@@ -186,7 +186,7 @@ export function createLocalGeminiSessionHandler(
       ? { expectedOrigins: options.expectedOrigins }
       : { expectedOrigin }),
     model: GEMINI_LIVE_MODEL,
-    instructions: 'A WebMPC Benefit Portal Live Assistant.',
+    instructions: 'CivicFlow: A WebMPC Public Benefit Portal Live Assistant.',
     tools: [],
     maxSessionDurationMs:
       options.maxSessionDurationMs ?? GEMINI_SESSION_EXPIRY_MS,

@@ -82,11 +82,14 @@ export function FirstRunGuide({
       <div className="first-run-header">
         <div className="first-run-title-group">
           <span className="first-run-badge">Guide</span>
-          <h3>How A WebMPC Benefit Portal Works with AI Agents</h3>
+          <h3>
+            How CivicFlow: A WebMPC Public Benefit Portal Works with AI Agents
+          </h3>
           <p className="first-run-copy">
-            A WebMPC Benefit Portal is a fictional synthetic demo. AI Site Tools
-            (WebMCP) and human users operate the exact same visible page state
-            in real time. Copy any sample prompt below into your AI agent:
+            CivicFlow: A WebMPC Public Benefit Portal is a fictional synthetic
+            demo. AI Site Tools (WebMCP) and human users operate the exact same
+            visible page state in real time. Copy any sample prompt below into
+            your AI agent:
           </p>
         </div>
         <button
