@@ -334,8 +334,8 @@ function CompanionContent({
             <summary>How the portal works</summary>
             <div className="companion-help-body">
               <p>
-                A WebMPC Benefit Portal is a fictional research demo that uses
-                synthetic data only.
+                CivicFlow: A WebMPC Public Benefit Portal is a fictional
+                research demo that uses synthetic data only.
               </p>
               <p>
                 Human actions and optional WebMCP Site Tools update the same

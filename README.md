@@ -1,13 +1,13 @@
-# A WebMPC Benefit Portal
+# CivicFlow: A WebMPC Public Benefit Portal
 
-A WebMPC Benefit Portal is a synthetic public-benefits workflow for exploring a practical
+CivicFlow: A WebMPC Public Benefit Portal is a synthetic public-benefits workflow for exploring a practical
 human-and-agent experience with WebMCP. A person can complete the same local
 application that a browser agent can inspect and update through a bounded,
 typed tool surface. The product is a research demo: it is not a government
 service, an eligibility engine, or an enrollment submission.
 
 > Release status: the Phase 5 documentation package is committed and published
-> to the current A WebMPC Benefit Portal Site at <https://civicflow.codesm.chatgpt.site>. The
+> to the current CivicFlow: A WebMPC Public Benefit Portal Site at <https://civicflow.codesm.chatgpt.site>. The
 > application behavior remains the previously accepted Sites version 10
 > implementation; this release added documentation and the MIT license only.
 
@@ -222,7 +222,7 @@ government document requirement or eligibility signal.
 The mapping below is an evidence-backed rehearsal guide, not an acceptance
 decision.
 
-| Criterion             | A WebMPC Benefit Portal evidence to inspect                                                                                                                                                                                 |
+| Criterion             | CivicFlow: A WebMPC Public Benefit Portal evidence to inspect                                                                                                                                                               |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | WebMCP Leverage       | A ten-name typed catalog (seven static plus applicable contextual tools), `document.modelContext.registerTool` through the browser adapter, contextual registration, command/store execution, and visible activity/progress |
 | Execution             | Six-section human workflow, deterministic synthetic seed, validation/recovery, local setup/build/test gates, and accepted Sites v10 URL                                                                                     |

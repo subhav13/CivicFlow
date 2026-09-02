@@ -69,7 +69,7 @@ test.describe('Reduced Motion Usability', () => {
     await page.goto('/');
     await expect(
       page.getByRole('heading', {
-        name: 'A WebMPC Benefit Portal synthetic demo',
+        name: 'CivicFlow: A WebMPC Public Benefit Portal synthetic demo',
       }),
     ).toBeVisible();
 

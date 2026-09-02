@@ -8,7 +8,7 @@ describe('App', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: /a webmpc benefit portal synthetic demo/i,
+        name: /civicflow: a webmpc public benefit portal synthetic demo/i,
       }),
     ).toBeInTheDocument();
   });
