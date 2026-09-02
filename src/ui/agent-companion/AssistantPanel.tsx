@@ -44,6 +44,7 @@ export interface AssistantPanelProps {
   onControllerEvent?: (event: AssistantControllerEvent) => void;
   initialMode?: AssistantMode;
   onListeningChange?: (isListening: boolean) => void;
+  onSpeakingChange?: (isSpeaking: boolean) => void;
 }
 
 export type AssistantMode = 'unselected' | 'chat' | 'voice';
@@ -78,6 +79,7 @@ export const AssistantPanel = forwardRef<
     onControllerEvent,
     initialMode = 'chat',
     onListeningChange,
+    onSpeakingChange,
   },
   ref,
 ) {
@@ -115,6 +117,8 @@ export const AssistantPanel = forwardRef<
   onControllerEventRef.current = onControllerEvent;
   const onListeningChangeRef = useRef(onListeningChange);
   onListeningChangeRef.current = onListeningChange;
+  const onSpeakingChangeRef = useRef(onSpeakingChange);
+  onSpeakingChangeRef.current = onSpeakingChange;
   const isSessionAvailable = enabled && controller !== null;
   const isConnected = isSessionAvailable && sessionState.status === 'connected';
   const isLiveActive =
@@ -130,7 +134,7 @@ export const AssistantPanel = forwardRef<
       controller.stopMicrophone();
       updateListening(false);
       setIsThinking(false);
-      setIsSpeaking(false);
+      updateSpeaking(false);
       setPendingConfirmation(null);
       liveTurnAssemblerRef.current.reset();
       setMessages((prev) =>
@@ -241,7 +245,7 @@ export const AssistantPanel = forwardRef<
               resetLiveTurn();
               updateListening(false);
               setIsThinking(false);
-              setIsSpeaking(false);
+              updateSpeaking(false);
               setPendingConfirmation(null);
               activeSpeechOutputRef.current.cancel();
             }
@@ -250,7 +254,7 @@ export const AssistantPanel = forwardRef<
             resetLiveTurn();
             updateListening(false);
             setIsThinking(false);
-            setIsSpeaking(false);
+            updateSpeaking(false);
             setPendingConfirmation(null);
             activeSpeechOutputRef.current.cancel();
             break;
@@ -265,7 +269,7 @@ export const AssistantPanel = forwardRef<
           }
 
           case 'audio':
-            setIsSpeaking(!speakerMutedRef.current);
+            updateSpeaking(!speakerMutedRef.current);
             setIsThinking(false);
             break;
 
@@ -305,13 +309,13 @@ export const AssistantPanel = forwardRef<
 
           case 'applying':
             setIsThinking(true);
-            setIsSpeaking(false);
+            updateSpeaking(false);
             break;
 
           case 'revision_requested':
             setPendingConfirmation(null);
             setIsThinking(false);
-            setIsSpeaking(false);
+            updateSpeaking(false);
             setLatestAssistantText(CORRECTION_PROMPT);
             setMessages((prev) => [
               ...prev.filter(
@@ -330,7 +334,7 @@ export const AssistantPanel = forwardRef<
           case 'succeeded': {
             setPendingConfirmation(null);
             setIsThinking(false);
-            setIsSpeaking(false);
+            updateSpeaking(false);
             break;
           }
 
@@ -339,7 +343,7 @@ export const AssistantPanel = forwardRef<
             handledFailureEvents.add(event);
             const failureMessage = `I couldn't apply that change: ${event.message}`;
             setIsThinking(false);
-            setIsSpeaking(false);
+            updateSpeaking(false);
             setLatestAssistantText(failureMessage);
             setMessages((prev) => [
               ...prev.filter(
@@ -360,7 +364,7 @@ export const AssistantPanel = forwardRef<
             commitLiveTurn(Boolean(event.interrupted));
             setMessages((prev) => prev.filter((m) => !m.interim));
             setIsThinking(false);
-            setIsSpeaking(false);
+            updateSpeaking(false);
             break;
         }
       },
@@ -375,6 +379,11 @@ export const AssistantPanel = forwardRef<
   const updateListening = (next: boolean) => {
     setIsListening(next);
     onListeningChangeRef.current?.(next);
+  };
+
+  const updateSpeaking = (next: boolean) => {
+    setIsSpeaking(next);
+    onSpeakingChangeRef.current?.(next);
   };
 
   const ensureConnected = async (): Promise<boolean> => {
@@ -410,7 +419,7 @@ export const AssistantPanel = forwardRef<
       setAssistantMode('chat');
     }
     setIsThinking(true);
-    setIsSpeaking(false);
+    updateSpeaking(false);
     setMessages((prev) => [
       ...prev,
       {
@@ -485,7 +494,7 @@ export const AssistantPanel = forwardRef<
     setSpeakerMuted(nextMuted);
     controller?.setSpeakerMuted?.(nextMuted);
     if (nextMuted) {
-      setIsSpeaking(false);
+      updateSpeaking(false);
       activeSpeechOutputRef.current.cancel();
     }
   };
@@ -507,7 +516,7 @@ export const AssistantPanel = forwardRef<
       controller.disconnect();
       handleStopListening();
       setIsThinking(false);
-      setIsSpeaking(false);
+      updateSpeaking(false);
       setPendingConfirmation(null);
       activeSpeechOutputRef.current.cancel();
     } else {

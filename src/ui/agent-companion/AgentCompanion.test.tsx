@@ -225,6 +225,47 @@ describe('AgentCompanion Component (Packet 2.3)', () => {
     expect(onOpen).toHaveBeenCalledOnce();
   });
 
+  it('shows a speaking wave on the floating launcher while provider audio is active', () => {
+    const controller = makeController();
+    render(
+      <AgentCompanion
+        capabilities={[]}
+        assistantController={controller as unknown as AssistantController}
+        assistantEnabled
+        isOpen={false}
+        onClose={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+
+    const launcher = screen.getByTestId('assistant-launcher');
+    expect(launcher).toHaveAttribute('data-speaking', 'false');
+    expect(launcher).not.toHaveClass('assistant-launcher--speaking');
+    expect(launcher).toHaveAttribute('aria-label', 'Open Agent Companion');
+
+    act(() => {
+      controller.emit({
+        type: 'audio',
+        data: 'AA==',
+        mimeType: 'audio/pcm;rate=24000',
+      });
+    });
+
+    expect(launcher).toHaveAttribute('data-speaking', 'true');
+    expect(launcher).toHaveClass('assistant-launcher--speaking');
+    expect(launcher).toHaveAttribute(
+      'aria-label',
+      'Open Agent Companion, speaking',
+    );
+    expect(screen.getByTestId('assistant-launcher-wave')).toBeInTheDocument();
+
+    act(() => controller.emit({ type: 'turn_complete' }));
+
+    expect(launcher).toHaveAttribute('data-speaking', 'false');
+    expect(launcher).not.toHaveClass('assistant-launcher--speaking');
+    expect(launcher).toHaveAttribute('aria-label', 'Open Agent Companion');
+  });
+
   it('offers an explicit chat or voice choice when the assistant is first opened', () => {
     const controller = makeController();
     render(
