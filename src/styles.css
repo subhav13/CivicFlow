@@ -1177,6 +1177,9 @@ h2 {
 }
 
 .assistant-launcher-orb {
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
   display: grid;
   width: 2.4rem;
   height: 2.4rem;
@@ -1187,6 +1190,103 @@ h2 {
   color: #fff;
   font-size: 1.15rem;
   box-shadow: inset 0 0.2rem 0.7rem rgba(255, 255, 255, 0.35);
+}
+
+.assistant-launcher-orb::before,
+.assistant-launcher-orb::after {
+  position: absolute;
+  inset: -0.35rem;
+  z-index: -1;
+  border: 1px solid rgba(126, 190, 255, 0.55);
+  border-radius: 50%;
+  content: '';
+  opacity: 0;
+  pointer-events: none;
+}
+
+.assistant-launcher-orb--speaking::before {
+  animation: assistant-orb-wave 1.45s ease-out infinite;
+}
+
+.assistant-launcher-orb--speaking::after {
+  animation: assistant-orb-wave 1.45s ease-out 0.72s infinite;
+}
+
+.assistant-launcher-wave {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.14rem;
+  height: 1.1rem;
+}
+
+.assistant-launcher-wave > span {
+  display: block;
+  width: 0.17rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 0 0.45rem rgba(214, 245, 255, 0.95);
+  animation: assistant-wave-bar 0.82s ease-in-out infinite alternate;
+}
+
+.assistant-launcher-wave > span:nth-child(2) {
+  height: 0.9rem;
+  animation-delay: 0.16s;
+}
+
+.assistant-launcher-wave > span:nth-child(3) {
+  height: 0.68rem;
+  animation-delay: 0.32s;
+}
+
+.assistant-launcher-glyph {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  opacity: 1;
+  transition: opacity 0.18s ease;
+}
+
+.assistant-launcher-orb--speaking .assistant-launcher-glyph {
+  opacity: 0.3;
+}
+
+.assistant-launcher-orb:not(.assistant-launcher-orb--speaking)
+  .assistant-launcher-wave {
+  display: none;
+}
+
+@keyframes assistant-wave-bar {
+  from {
+    transform: scaleY(0.45);
+    opacity: 0.65;
+  }
+
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes assistant-orb-wave {
+  0% {
+    transform: scale(0.72);
+    opacity: 0.75;
+    box-shadow: 0 0 0 rgba(126, 190, 255, 0.1);
+  }
+
+  70% {
+    opacity: 0.18;
+  }
+
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+    box-shadow: 0 0 1.5rem rgba(126, 190, 255, 0.75);
+  }
 }
 
 .assistant-companion-host .companion-panel.assistant-surface {
@@ -3306,5 +3406,16 @@ h2 {
     transition: none !important;
     animation: none !important;
     transform: none !important;
+  }
+
+  .assistant-launcher-wave > span {
+    animation: none !important;
+  }
+
+  .assistant-launcher-orb--speaking::before,
+  .assistant-launcher-orb--speaking::after {
+    animation: none !important;
+    opacity: 0.35;
+    transform: none;
   }
 }

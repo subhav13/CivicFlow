@@ -129,6 +129,7 @@ function CompanionContent({
   onClose,
   panelRef,
   onListeningChange,
+  onSpeakingChange,
 }: {
   capabilities: readonly CapabilitySummary[];
   activity?: readonly ActivityEntry[];
@@ -145,6 +146,7 @@ function CompanionContent({
   onClose?: () => void;
   panelRef?: React.RefObject<AssistantPanelHandle | null>;
   onListeningChange?: (isListening: boolean) => void;
+  onSpeakingChange?: (isSpeaking: boolean) => void;
 }) {
   const latestActivity = activity[0];
   const statusSummary =
@@ -194,6 +196,7 @@ function CompanionContent({
         initialMode="unselected"
         ref={panelRef}
         onListeningChange={onListeningChange}
+        onSpeakingChange={onSpeakingChange}
       />
 
       {deliveryFailure ? (
@@ -365,6 +368,7 @@ export function AgentCompanion({
   const closeRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<AssistantPanelHandle>(null);
   const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const [isActivityOpen, setIsActivityOpen] = useState(false);
   const wasOpen = useRef(false);
   const onCloseRef = useRef(onClose);
@@ -584,8 +588,9 @@ export function AgentCompanion({
         ) : null}
         <button
           ref={triggerRef}
-          className="assistant-launcher"
+          className={`assistant-launcher${isSpeaking ? ' assistant-launcher--speaking' : ''}`}
           data-testid="assistant-launcher"
+          data-speaking={isSpeaking}
           type="button"
           onClick={() => {
             if (isOpen) {
@@ -599,11 +604,26 @@ export function AgentCompanion({
           aria-expanded={isOpen}
           aria-controls="agent-companion-dialog"
           aria-label={
-            isOpen ? 'Minimize Agent Companion' : 'Open Agent Companion'
+            isSpeaking
+              ? `${isOpen ? 'Minimize' : 'Open'} Agent Companion, speaking`
+              : isOpen
+                ? 'Minimize Agent Companion'
+                : 'Open Agent Companion'
           }
         >
-          <span className="assistant-launcher-orb" aria-hidden="true">
-            ✦
+          <span
+            className={`assistant-launcher-orb${isSpeaking ? ' assistant-launcher-orb--speaking' : ''}`}
+            aria-hidden="true"
+          >
+            <span
+              className="assistant-launcher-wave"
+              data-testid="assistant-launcher-wave"
+            >
+              <span />
+              <span />
+              <span />
+            </span>
+            <span className="assistant-launcher-glyph">✦</span>
           </span>
         </button>
 
@@ -684,6 +704,7 @@ export function AgentCompanion({
             onClose={onClose}
             panelRef={panelRef}
             onListeningChange={setIsListening}
+            onSpeakingChange={setIsSpeaking}
           />
         </aside>
         {!isOpen && isListening ? (

@@ -57,6 +57,7 @@ function renderPanel(
       speak(text: string, rate: number): void;
       cancel(): void;
     };
+    onSpeakingChange?: (isSpeaking: boolean) => void;
   } = {},
 ) {
   render(
@@ -67,6 +68,7 @@ function renderPanel(
         options.readCurrentSection ?? (() => 'Visible Household section text')
       }
       speechOutput={options.speechOutput}
+      onSpeakingChange={options.onSpeakingChange}
     />,
   );
   return controller;
@@ -562,6 +564,25 @@ describe('Phase 4 unified assistant panel', () => {
 
     act(() => controller.emit({ type: 'turn_complete' }));
     expect(screen.getByRole('status')).toHaveTextContent(/connected/i);
+  });
+
+  it('notifies the floating launcher when provider audio starts and the turn completes', () => {
+    const onSpeakingChange = vi.fn();
+    const controller = renderPanel(new FakeAssistantController(), {
+      onSpeakingChange,
+    });
+
+    act(() => {
+      controller.emit({
+        type: 'audio',
+        data: 'pcm',
+        mimeType: 'audio/pcm;rate=24000',
+      });
+    });
+    expect(onSpeakingChange).toHaveBeenLastCalledWith(true);
+
+    act(() => controller.emit({ type: 'turn_complete' }));
+    expect(onSpeakingChange).toHaveBeenLastCalledWith(false);
   });
 
   it('shows applying while shared operation feedback is applying', () => {
