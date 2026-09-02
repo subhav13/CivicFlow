@@ -7,7 +7,9 @@ test('the six-section shell remains usable at a narrow mobile width', async ({
   await page.goto('/');
 
   await expect(
-    page.getByRole('heading', { name: 'CivicFlow synthetic demo' }),
+    page.getByRole('heading', {
+      name: 'A WebMPC Benefit Portal synthetic demo',
+    }),
   ).toBeVisible();
   await expect(page.getByText('20% complete')).toBeVisible();
 

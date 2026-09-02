@@ -484,7 +484,7 @@ describe('local Live runtime', () => {
       instructions.indexOf('then immediately invoke the tool as a proposal'),
     );
     expect(instructions).toContain(
-      'CivicFlow will pause the proposal and obtain confirmation through its UI before execution',
+      'The portal will pause the proposal and obtain confirmation through its UI before execution',
     );
     expect(instructions).toContain(
       'add_income_source asks for missing fields one at a time in this order: member, employer or source, amount in dollars, frequency',

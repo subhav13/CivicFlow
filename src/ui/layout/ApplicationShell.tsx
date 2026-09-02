@@ -81,10 +81,10 @@ export function ApplicationShell({
       <header className="topbar">
         <div className="brand-lockup">
           <div className="brand-mark" aria-hidden="true">
-            CF
+            WB
           </div>
           <div>
-            <p className="brand-name">CivicFlow</p>
+            <p className="brand-name">A WebMPC Benefit Portal</p>
             <p className="brand-subtitle">Benefits workspace</p>
           </div>
         </div>

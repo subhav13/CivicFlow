@@ -94,7 +94,7 @@ export function DocumentsSection({
       </SectionPanel>
       <SectionPanel title="Attach a demo preset" tone="soft">
         <p className="helper-copy">
-          These are labels only: CivicFlow never opens a file picker, reads a
+          These are labels only: the portal never opens a file picker, reads a
           file, or sends a document over the network.
         </p>
         <div className="document-preset-grid">

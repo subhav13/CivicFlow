@@ -121,7 +121,9 @@ test.describe('Adversarial, Resilience, and Accessibility Gates (Packet 3.2)', (
 
     // Page recovers safely to the deterministic Maya Carter seed
     await expect(
-      page.getByRole('heading', { name: 'CivicFlow synthetic demo' }),
+      page.getByRole('heading', {
+        name: 'A WebMPC Benefit Portal synthetic demo',
+      }),
     ).toBeVisible();
     await expect(
       page.getByRole('heading', { name: 'About You' }),
@@ -257,7 +259,9 @@ test.describe('Adversarial, Resilience, and Accessibility Gates (Packet 3.2)', (
     await page.goto('/');
 
     await expect(
-      page.getByRole('heading', { name: 'CivicFlow synthetic demo' }),
+      page.getByRole('heading', {
+        name: 'A WebMPC Benefit Portal synthetic demo',
+      }),
     ).toBeVisible();
     await expect(
       page.getByRole('button', { name: 'Next: Household' }),
@@ -298,7 +302,9 @@ test.describe('Adversarial, Resilience, and Accessibility Gates (Packet 3.2)', (
     await page.goto('/');
 
     await expect(
-      page.getByRole('heading', { name: 'CivicFlow synthetic demo' }),
+      page.getByRole('heading', {
+        name: 'A WebMPC Benefit Portal synthetic demo',
+      }),
     ).toBeVisible();
 
     // No horizontal document overflow
@@ -354,7 +360,7 @@ test.describe('Adversarial, Resilience, and Accessibility Gates (Packet 3.2)', (
 
     // 2. Heading hierarchy: H1 present, H2 for main section & companion
     const h1 = page.getByRole('heading', { level: 1 });
-    await expect(h1).toHaveText('CivicFlow synthetic demo');
+    await expect(h1).toHaveText('A WebMPC Benefit Portal synthetic demo');
     const h2s = await page.getByRole('heading', { level: 2 }).allTextContents();
     expect(h2s).toContain('About You');
     expect(h2s).toContain('Agent Companion');
@@ -409,7 +415,9 @@ test.describe('Adversarial, Resilience, and Accessibility Gates (Packet 3.2)', (
 
     // Page mounts safely despite faulty WebMCP API
     await expect(
-      page.getByRole('heading', { name: 'CivicFlow synthetic demo' }),
+      page.getByRole('heading', {
+        name: 'A WebMPC Benefit Portal synthetic demo',
+      }),
     ).toBeVisible();
     await expect(
       page.getByRole('heading', { name: 'About You' }),

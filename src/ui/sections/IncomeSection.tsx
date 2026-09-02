@@ -201,7 +201,7 @@ export function IncomeSection({
   return (
     <div className="section-content">
       <SectionHeader
-        description="Record a source using dollars in the form; CivicFlow stores integer cents underneath."
+        description="Record a source using dollars in the form; the portal stores integer cents underneath."
         eyebrow="Money in the household"
         title="Income"
       />

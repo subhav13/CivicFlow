@@ -23,7 +23,7 @@ export function ApplicationProgressTracker({
       <div className="progress-header-main">
         <div>
           <p className="eyebrow">Application workspace</p>
-          <h1>CivicFlow synthetic demo</h1>
+          <h1>A WebMPC Benefit Portal synthetic demo</h1>
           <p className="progress-copy">
             Complete the sections for Maya Carter and her household.
           </p>
