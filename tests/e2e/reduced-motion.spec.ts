@@ -68,7 +68,9 @@ test.describe('Reduced Motion Usability', () => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto('/');
     await expect(
-      page.getByRole('heading', { name: 'CivicFlow synthetic demo' }),
+      page.getByRole('heading', {
+        name: 'A WebMPC Benefit Portal synthetic demo',
+      }),
     ).toBeVisible();
 
     const tracker = page.getByTestId('application-progress-tracker');

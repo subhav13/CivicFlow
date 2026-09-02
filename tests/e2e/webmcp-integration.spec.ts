@@ -38,7 +38,9 @@ test.describe.serial('WebMCP real-browser golden journey (Packet 3.1)', () => {
 
   test('1. the browser-visible model-context surface can be installed before app load and discovers the seven static tools', async () => {
     await expect(
-      page.getByRole('heading', { name: 'CivicFlow synthetic demo' }),
+      page.getByRole('heading', {
+        name: 'A WebMPC Benefit Portal synthetic demo',
+      }),
     ).toBeVisible();
 
     const tools = await getBrowserTools(page);

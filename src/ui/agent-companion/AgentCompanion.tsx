@@ -331,11 +331,11 @@ function CompanionContent({
           </div>
 
           <details className="companion-help-details">
-            <summary>How CivicFlow works</summary>
+            <summary>How the portal works</summary>
             <div className="companion-help-body">
               <p>
-                CivicFlow is a fictional research demo that uses synthetic data
-                only.
+                A WebMPC Benefit Portal is a fictional research demo that uses
+                synthetic data only.
               </p>
               <p>
                 Human actions and optional WebMCP Site Tools update the same
@@ -562,7 +562,7 @@ export function AgentCompanion({
           >
             <div>
               <strong>Need a hand?</strong>
-              <p>Ask CivicFlow a question or start a voice conversation.</p>
+              <p>Ask the portal a question or start a voice conversation.</p>
             </div>
             <div className="assistant-coachmark-actions">
               <button

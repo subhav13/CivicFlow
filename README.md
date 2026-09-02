@@ -1,13 +1,13 @@
-# CivicFlow
+# A WebMPC Benefit Portal
 
-CivicFlow is a synthetic public-benefits workflow for exploring a practical
+A WebMPC Benefit Portal is a synthetic public-benefits workflow for exploring a practical
 human-and-agent experience with WebMCP. A person can complete the same local
 application that a browser agent can inspect and update through a bounded,
 typed tool surface. The product is a research demo: it is not a government
 service, an eligibility engine, or an enrollment submission.
 
 > Release status: the Phase 5 documentation package is committed and published
-> to the current CivicFlow Site at <https://civicflow.codesm.chatgpt.site>. The
+> to the current A WebMPC Benefit Portal Site at <https://civicflow.codesm.chatgpt.site>. The
 > application behavior remains the previously accepted Sites version 10
 > implementation; this release added documentation and the MIT license only.
 
@@ -179,12 +179,12 @@ The application stores its validated local application state in browser
 seed. There is no account, authentication, cross-device state, fingerprinting,
 or custom visitor identity. This release adds no transcript store, custom
 product-event analytics client, analytics route, or D1 schema. Any Sites
-platform visitor/page-view analytics is outside CivicFlow's application data
+platform visitor/page-view analytics is outside the portal's application data
 model and is not a claim about custom analytics.
 
 When optional Gemini is enabled, microphone/text traffic follows the configured
 Gemini Live path. Keep the interaction synthetic and review the provider's
-current terms separately. CivicFlow's server keeps `GEMINI_API_KEY` out of the
+current terms separately. The portal's server keeps `GEMINI_API_KEY` out of the
 browser; never paste a credential into an issue, screenshot, video, or this
 repository.
 
@@ -222,7 +222,7 @@ government document requirement or eligibility signal.
 The mapping below is an evidence-backed rehearsal guide, not an acceptance
 decision.
 
-| Criterion             | CivicFlow evidence to inspect                                                                                                                                                                                               |
+| Criterion             | A WebMPC Benefit Portal evidence to inspect                                                                                                                                                                                 |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | WebMCP Leverage       | A ten-name typed catalog (seven static plus applicable contextual tools), `document.modelContext.registerTool` through the browser adapter, contextual registration, command/store execution, and visible activity/progress |
 | Execution             | Six-section human workflow, deterministic synthetic seed, validation/recovery, local setup/build/test gates, and accepted Sites v10 URL                                                                                     |
