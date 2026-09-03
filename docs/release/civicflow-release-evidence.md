@@ -93,8 +93,8 @@ Devpost entry state.
 ## Claim and evidence matrix
 
 This matrix was built before the release artifacts were authored. Every public
-claim in the README, demo script, storyboard, and Devpost draft must stay
-within these rows.
+claim in the README, demo script, storyboard, and separately delivered Devpost
+copy must stay within these rows.
 
 | ID    | Claim                                                                         | State                                             | Exact owner/evidence                                                                                                                                      | Limitation                                                                                               |
 | ----- | ----------------------------------------------------------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
@@ -113,7 +113,7 @@ within these rows.
 | EV-13 | Candidate setup/build/test gates are reproducible                             | `local-tested`                                    | Disposable exact candidate and command results in the verification section below                                                                          | Sol High accepted the local packets; external release gates remain                                       |
 | EV-14 | Public source repository with detectable open-source license is ready         | `public-verified`                                 | Public repository <https://github.com/subhav13/CivicFlow>; root `LICENSE` fetched from `main` and contains the MIT text                                   | Keep the repository public and unchanged through judging                                                 |
 | EV-15 | Public YouTube demo is ready                                                  | `public-verified`                                 | <https://youtu.be/OoCD4bAo9EA>; YouTube showed the CivicFlow demo title and a duration of `2:19`                                                          | Owner must ensure audio/content rights and keep the video public through judging                         |
-| EV-16 | Devpost submission is ready                                                   | `draft-ready`                                     | Complete copy-ready form draft in `docs/release/civicflow-devpost-draft.md`                                                                               | Owner must fill account-specific fields, submit, and verify the entry is not left in draft               |
+| EV-16 | Devpost submission copy is ready                                              | `owner-held`                                      | Copy-ready Markdown is maintained outside the public source repository                                                                                    | Owner must fill account-specific fields, submit, and verify the entry is not left in draft               |
 
 The following are explicitly excluded as `unsupported`: government integration,
 eligibility determination, official benefits advice, real enrollment, real
@@ -126,7 +126,7 @@ The required presence check was run before authoring with the exact command:
 
 ```bash
 missing=0
-for file in README.md docs/architecture/civicflow-runtime.md docs/demo/civicflow-demo-script.md docs/demo/civicflow-video-storyboard.md docs/release/civicflow-release-evidence.md docs/release/civicflow-devpost-draft.md LICENSE; do
+for file in README.md docs/architecture/civicflow-runtime.md docs/demo/civicflow-demo-script.md docs/demo/civicflow-video-storyboard.md docs/release/civicflow-release-evidence.md LICENSE; do
   if [[ -s "$file" ]]; then
     printf 'PRESENT %s\n' "$file"
   else
@@ -221,10 +221,10 @@ GO-with-external-gates for Phase 5**. The public repository, license, and video
 gates are now closed. Devpost form submission, account-specific fields, final
 gallery selection, and continued judge access remain owner-controlled.
 
-### Submission-document refresh verification
+### Submission-release correction verification
 
-Observed 2026-09-03 for the README, Devpost draft, release evidence, video
-storyboard, and promotional cover update:
+Observed 2026-09-03 for the README, release evidence, video storyboard,
+promotional cover, and removal of submission-form copy from the repository:
 
 - `npm run format:check` — **PASS**.
 - `npm run scan:secrets` — **PASS**.
@@ -253,7 +253,6 @@ Allowlisted candidate artifacts:
 - `docs/demo/civicflow-demo-script.md`
 - `docs/demo/civicflow-video-storyboard.md`
 - `docs/release/civicflow-release-evidence.md`
-- `docs/release/civicflow-devpost-draft.md`
 - `LICENSE`
 
 `LICENSE` contains the standard MIT text and the owner-selected project-level

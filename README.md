@@ -248,16 +248,16 @@ decision.
 
 The official submission description must answer why the use case fits WebMCP,
 how the experience improves, what people and agents do together, and how
-WebMCP was implemented. A draft is prepared at
-[`docs/release/civicflow-devpost-draft.md`](docs/release/civicflow-devpost-draft.md).
+WebMCP was implemented. Submission-form copy is intentionally maintained
+outside this public source repository.
 
 ## Release and submission status
 
 The live portal, public GitHub repository, root MIT license, and public 2:19
 YouTube demo are ready for judging. GitHub's `main` and `release` branches are
-kept at the same final submission commit. The complete copy-ready Devpost form
-draft is in
-[`docs/release/civicflow-devpost-draft.md`](docs/release/civicflow-devpost-draft.md).
+kept at the same final release commit. Devpost form copy is delivered separately
+from the repository so this public source remains focused on the product,
+runtime documentation, and reproducible evidence.
 
 The Devpost form itself is intentionally a manual owner action. After the
 deadline, the repository, video, live Site, and submission should remain
