@@ -487,6 +487,9 @@ describe('local Live runtime', () => {
       'The portal will pause the proposal and obtain confirmation through its UI before execution',
     );
     expect(instructions).toContain(
+      'The navigate_to_section tool is navigation-only: invoke it directly without confirmation, draft cards, or draft-review narration',
+    );
+    expect(instructions).toContain(
       'add_income_source asks for missing fields one at a time in this order: member, employer or source, amount in dollars, frequency',
     );
     expect(instructions).toContain(

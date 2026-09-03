@@ -163,9 +163,9 @@ describe('Tool Catalog Contract', () => {
     expect(
       TOOL_CATALOG.set_current_coverage.annotations?.readOnlyHint,
     ).toBeFalsy();
-    expect(
-      TOOL_CATALOG.navigate_to_section.annotations?.readOnlyHint,
-    ).toBeFalsy();
+    expect(TOOL_CATALOG.navigate_to_section.annotations?.readOnlyHint).toBe(
+      true,
+    );
   });
 });
 

@@ -15,6 +15,10 @@ const KNOWN_READ_ONLY_NAMES: Record<string, true> = {
   list_uploaded_documents: true,
 };
 
+const KNOWN_NAVIGATION_NAMES: Record<string, true> = {
+  navigate_to_section: true,
+};
+
 function isForbidden(tool: RegisteredToolRef): boolean {
   const targets = [tool.name, tool.title, tool.description].filter(Boolean);
   return targets.some((text) => FORBIDDEN_PATTERN.test(text));
@@ -38,7 +42,7 @@ export function classifyToolIntent(
     };
   }
 
-  if (tool.name === 'navigate_to_section') {
+  if (KNOWN_NAVIGATION_NAMES[tool.name]) {
     return {
       kind: 'allow',
       intent: 'navigation',

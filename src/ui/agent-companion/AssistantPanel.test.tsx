@@ -74,6 +74,18 @@ function renderPanel(
   return controller;
 }
 
+const PLACEHOLDER_ACCESS_PIN = 'placeholder-access-pin';
+
+async function enableLiveWithPlaceholderPin(): Promise<void> {
+  fireEvent.change(screen.getByLabelText(/companion access code/i), {
+    target: { value: PLACEHOLDER_ACCESS_PIN },
+  });
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Enable Live' }));
+    await Promise.resolve();
+  });
+}
+
 describe('Phase 4 unified assistant panel', () => {
   it('renders one themed panel with shared text, voice, status, and read-only controls', () => {
     renderPanel();
@@ -842,8 +854,12 @@ describe('Phase 5.3 local Live switch', () => {
       fireEvent.click(liveSwitch);
       await Promise.resolve();
     });
+    expect(controller.connect).not.toHaveBeenCalled();
+    await enableLiveWithPlaceholderPin();
 
-    expect(controller.connect).toHaveBeenCalledOnce();
+    expect(controller.connect).toHaveBeenCalledWith({
+      accessPin: PLACEHOLDER_ACCESS_PIN,
+    });
     expect(liveSwitch).toBeChecked();
   });
 
@@ -860,6 +876,7 @@ describe('Phase 5.3 local Live switch', () => {
       fireEvent.click(liveSwitch);
       await Promise.resolve();
     });
+    await enableLiveWithPlaceholderPin();
     expect(controller.connect).toHaveBeenCalled();
 
     // Turn OFF
@@ -895,10 +912,11 @@ describe('Phase 5.3 local Live switch', () => {
       name: /live voice assistant/i,
     });
 
-    // Click ON (connect in flight)
+    // Click ON (connect in flight after PIN)
     await act(async () => {
       fireEvent.click(liveSwitch);
     });
+    await enableLiveWithPlaceholderPin();
     expect(controller.connect).toHaveBeenCalledOnce();
 
     // Click OFF while connect is in flight
@@ -948,6 +966,7 @@ describe('Phase 5.3 local Live switch', () => {
       fireEvent.click(switches[0]);
       await Promise.resolve();
     });
+    await enableLiveWithPlaceholderPin();
 
     // Both panels must reflect connected and not disconnect each other
     expect(controller.connect).toHaveBeenCalledOnce();
@@ -986,5 +1005,345 @@ describe('Phase 5.3 local Live switch', () => {
 
     expect(controller.disconnect).toHaveBeenCalled();
     expect(controller.stopMicrophone).toHaveBeenCalled();
+  });
+});
+
+describe('Phase 8 companion PIN prompt', () => {
+  it('shows an accessible PIN dialog only after Live is turned from off to on', async () => {
+    const controller = new FakeAssistantController({ status: 'idle' });
+    renderPanel(controller, { enabled: true });
+
+    expect(
+      screen.queryByRole('dialog', { name: /enable live/i }),
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('switch', { name: /live voice assistant/i }),
+      );
+    });
+
+    const dialog = screen.getByRole('dialog', {
+      name: /enable live voice assistant/i,
+    });
+    const pinInput = screen.getByLabelText(/companion access code/i);
+    expect(dialog).toBeInTheDocument();
+    expect(pinInput).toHaveAttribute('type', 'password');
+    expect(controller.connect).not.toHaveBeenCalled();
+    expect(controller.startMicrophone).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('switch', { name: /live voice assistant/i }),
+    ).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it('cancels without connecting and returns focus to the Live switch', async () => {
+    const controller = new FakeAssistantController({ status: 'idle' });
+    renderPanel(controller, { enabled: true });
+    const liveSwitch = screen.getByRole('switch', {
+      name: /live voice assistant/i,
+    });
+
+    await act(async () => {
+      fireEvent.click(liveSwitch);
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    });
+
+    expect(controller.connect).not.toHaveBeenCalled();
+    expect(controller.disconnect).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole('dialog', { name: /enable live/i }),
+    ).not.toBeInTheDocument();
+    expect(liveSwitch).toHaveAttribute('aria-checked', 'false');
+    expect(liveSwitch).toHaveFocus();
+  });
+
+  it('closes the PIN dialog on Escape without connecting', async () => {
+    const controller = new FakeAssistantController({ status: 'idle' });
+    renderPanel(controller, { enabled: true });
+    const liveSwitch = screen.getByRole('switch', {
+      name: /live voice assistant/i,
+    });
+
+    await act(async () => {
+      fireEvent.click(liveSwitch);
+    });
+    await act(async () => {
+      fireEvent.keyDown(document, { key: 'Escape' });
+    });
+
+    expect(controller.connect).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole('dialog', { name: /enable live/i }),
+    ).not.toBeInTheDocument();
+    expect(liveSwitch).toHaveAttribute('aria-checked', 'false');
+    expect(liveSwitch).toHaveFocus();
+  });
+
+  it('connects with the entered value only after Enable Live and keeps it out of storage', async () => {
+    const controller = new FakeAssistantController({ status: 'idle' });
+    renderPanel(controller, { enabled: true });
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('switch', { name: /live voice assistant/i }),
+      );
+    });
+    fireEvent.change(screen.getByLabelText(/companion access code/i), {
+      target: { value: PLACEHOLDER_ACCESS_PIN },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Enable Live' }));
+      await Promise.resolve();
+    });
+
+    expect(controller.connect).toHaveBeenCalledWith({
+      accessPin: PLACEHOLDER_ACCESS_PIN,
+    });
+    expect(controller.startMicrophone).not.toHaveBeenCalled();
+    expect(localStorage.getItem('civicflow.application.v1')).toBeNull();
+    expect(sessionStorage.length).toBe(0);
+    expect(document.body.textContent).not.toContain(PLACEHOLDER_ACCESS_PIN);
+    expect(
+      screen.queryByRole('dialog', { name: /enable live/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('switch', { name: /live voice assistant/i }),
+    ).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('keeps the PIN dialog visible with truthful progress while connection is pending', async () => {
+    let resolveConnect!: () => void;
+    const connectPromise = new Promise<void>((resolve) => {
+      resolveConnect = resolve;
+    });
+    const controller = new FakeAssistantController({ status: 'idle' });
+    controller.connect.mockImplementationOnce(async () => {
+      controller.emit({ type: 'state', state: { status: 'connecting' } });
+      await connectPromise;
+      controller.emit({ type: 'state', state: { status: 'connected' } });
+    });
+    renderPanel(controller, { enabled: true });
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('switch', { name: /live voice assistant/i }),
+      );
+    });
+    fireEvent.change(screen.getByLabelText(/companion access code/i), {
+      target: { value: PLACEHOLDER_ACCESS_PIN },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Enable Live' }));
+      await Promise.resolve();
+    });
+
+    expect(
+      screen.getByRole('status', {
+        name: /checking access code and establishing secure connection/i,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('progressbar')).toBeInTheDocument();
+    expect(screen.getByLabelText(/companion access code/i)).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Enable Live' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    expect(
+      screen.getByRole('dialog', { name: /enable live voice assistant/i }),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      resolveConnect();
+      await connectPromise;
+    });
+    expect(
+      screen.queryByRole('dialog', { name: /enable live voice assistant/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('leaves Live off and shows non-sensitive guidance when the pin is rejected', async () => {
+    const controller = new FakeAssistantController({ status: 'idle' });
+    controller.connect.mockImplementationOnce(async () => {
+      controller.emit({
+        type: 'state',
+        state: {
+          status: 'error',
+          message: 'Live access was not accepted. Try again.',
+          recoverable: true,
+        },
+      });
+    });
+    renderPanel(controller, { enabled: true });
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('switch', { name: /live voice assistant/i }),
+      );
+    });
+    fireEvent.change(screen.getByLabelText(/companion access code/i), {
+      target: { value: 'wrong-access-pin' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Enable Live' }));
+      await Promise.resolve();
+    });
+
+    expect(
+      screen.getByText(/live access was not accepted/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: /enable live voice assistant/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/incorrect access code\. please try again/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('!', { selector: '.companion-pin-dialog-status-icon' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('switch', { name: /live voice assistant/i }),
+    ).toHaveAttribute('aria-checked', 'false');
+    expect(controller.startMicrophone).not.toHaveBeenCalled();
+    expect(document.body.textContent).not.toContain('wrong-access-pin');
+  });
+
+  it('clears a rejected PIN and allows a retry after an incorrect-code error', async () => {
+    const controller = new FakeAssistantController({ status: 'idle' });
+    controller.connect
+      .mockImplementationOnce(async () => {
+        controller.emit({
+          type: 'state',
+          state: {
+            status: 'error',
+            message: 'Live access was not accepted. Try again.',
+            recoverable: true,
+          },
+        });
+      })
+      .mockImplementationOnce(async () => {
+        controller.emit({ type: 'state', state: { status: 'connected' } });
+      });
+    renderPanel(controller, { enabled: true });
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('switch', { name: /live voice assistant/i }),
+      );
+    });
+    const pinInput = screen.getByLabelText(/companion access code/i);
+    fireEvent.change(pinInput, { target: { value: 'wrong-access-pin' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Enable Live' }));
+      await Promise.resolve();
+    });
+
+    expect(pinInput).toHaveValue('');
+    expect(pinInput).toBeEnabled();
+    expect(
+      screen.getByText(/incorrect access code\. please try again/i),
+    ).toBeInTheDocument();
+
+    fireEvent.change(pinInput, {
+      target: { value: PLACEHOLDER_ACCESS_PIN },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Enable Live' }));
+      await Promise.resolve();
+    });
+
+    expect(controller.connect).toHaveBeenCalledTimes(2);
+    expect(
+      screen.queryByRole('dialog', { name: /enable live voice assistant/i }),
+    ).not.toBeInTheDocument();
+    expect(document.body.textContent).not.toContain('wrong-access-pin');
+  });
+
+  it('keeps the dialog open with connection guidance when connect rejects', async () => {
+    const controller = new FakeAssistantController({ status: 'idle' });
+    controller.connect.mockRejectedValueOnce(new Error('network unavailable'));
+    renderPanel(controller, { enabled: true });
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('switch', { name: /live voice assistant/i }),
+      );
+    });
+    const pinInput = screen.getByLabelText(/companion access code/i);
+    fireEvent.change(pinInput, {
+      target: { value: PLACEHOLDER_ACCESS_PIN },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Enable Live' }));
+      await Promise.resolve();
+    });
+
+    expect(
+      screen.getByText(
+        /assistant connection failed\. check the local server settings and try again/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: /enable live voice assistant/i }),
+    ).toBeInTheDocument();
+    expect(pinInput).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Enable Live' })).toBeEnabled();
+  });
+
+  it('requests the microphone only after a successful PIN connection from Start voice', async () => {
+    const controller = new FakeAssistantController({ status: 'idle' });
+    render(
+      <AssistantPanel
+        controller={controller as unknown as AssistantController}
+        enabled
+        initialMode="unselected"
+      />,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Start voice' }));
+    });
+    expect(controller.connect).not.toHaveBeenCalled();
+    expect(controller.startMicrophone).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText(/companion access code/i), {
+      target: { value: PLACEHOLDER_ACCESS_PIN },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Enable Live' }));
+      await Promise.resolve();
+    });
+
+    expect(controller.connect).toHaveBeenCalledWith({
+      accessPin: PLACEHOLDER_ACCESS_PIN,
+    });
+    expect(controller.startMicrophone).toHaveBeenCalledOnce();
+  });
+
+  it('clears any in-memory access value when Live is turned off', async () => {
+    const controller = new FakeAssistantController({ status: 'idle' });
+    renderPanel(controller, { enabled: true });
+    const liveSwitch = screen.getByRole('switch', {
+      name: /live voice assistant/i,
+    });
+
+    await act(async () => {
+      fireEvent.click(liveSwitch);
+    });
+    fireEvent.change(screen.getByLabelText(/companion access code/i), {
+      target: { value: PLACEHOLDER_ACCESS_PIN },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Enable Live' }));
+      await Promise.resolve();
+    });
+    await act(async () => {
+      fireEvent.click(liveSwitch);
+    });
+
+    expect(controller.disconnect).toHaveBeenCalledOnce();
+    expect(liveSwitch).toHaveAttribute('aria-checked', 'false');
+    expect(document.body.textContent).not.toContain(PLACEHOLDER_ACCESS_PIN);
+    expect(localStorage.length).toBe(0);
+    expect(sessionStorage.length).toBe(0);
   });
 });

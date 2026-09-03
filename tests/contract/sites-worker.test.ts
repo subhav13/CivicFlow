@@ -138,13 +138,14 @@ describe('Sites Worker artifact', () => {
           Origin: siteOrigin,
           'Content-Type': 'application/json',
         },
-        body: '{}',
+        body: JSON.stringify({ accessPin: 'placeholder-access-pin' }),
       }),
       {
         ASSETS: assets,
         GEMINI_API_KEY: 'test-server-key',
         CIVICFLOW_ALLOWED_ORIGINS: siteOrigin,
         CIVICFLOW_VOICE_ENABLED: '1',
+        CIVICFLOW_COMPANION_PIN: 'placeholder-access-pin',
       },
     );
 

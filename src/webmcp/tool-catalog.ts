@@ -329,6 +329,9 @@ export const TOOL_CATALOG: Readonly<
       string,
       unknown
     >,
+    annotations: {
+      readOnlyHint: true,
+    },
   },
   add_household_member: {
     name: 'add_household_member',

@@ -4,29 +4,65 @@ import { defineConfig, loadEnv } from 'vite';
 import type { Plugin } from 'vite';
 import { createLocalGeminiSessionHandler } from './server/gemini-local-session.ts';
 
+export interface LocalViteGeminiSessionSeams {
+  fetch?: typeof fetch;
+  now?: () => number;
+  endpointUrl?: string;
+  apiKey?: string;
+}
+
+function nonblankEnvValue(
+  ...values: Array<string | undefined>
+): string | undefined {
+  for (const value of values) {
+    if (typeof value !== 'string') continue;
+    const trimmed = value.trim();
+    if (trimmed.length > 0) {
+      return trimmed;
+    }
+  }
+  return undefined;
+}
+
+export function createLocalViteGeminiSessionHandler(
+  loadedEnv: Record<string, string>,
+  seams: LocalViteGeminiSessionSeams = {},
+) {
+  const expectedOrigin =
+    process.env.CIVICFLOW_LIVE_ORIGIN ||
+    loadedEnv.CIVICFLOW_LIVE_ORIGIN ||
+    'http://localhost:5173';
+  const auditEnabled =
+    process.env.CIVICFLOW_LIVE_AUDIT !== undefined
+      ? process.env.CIVICFLOW_LIVE_AUDIT === '1'
+      : loadedEnv.CIVICFLOW_LIVE_AUDIT === '1';
+  const voiceEnabled =
+    process.env.CIVICFLOW_VOICE_ENABLED !== undefined
+      ? process.env.CIVICFLOW_VOICE_ENABLED === '1'
+      : loadedEnv.CIVICFLOW_VOICE_ENABLED === '1';
+  const companionPin = nonblankEnvValue(
+    process.env.CIVICFLOW_COMPANION_PIN,
+    loadedEnv.CIVICFLOW_COMPANION_PIN,
+  );
+  return createLocalGeminiSessionHandler({
+    auditEnabled,
+    voiceEnabled,
+    expectedOrigin,
+    apiKey:
+      seams.apiKey ?? (process.env.GEMINI_API_KEY || loadedEnv.GEMINI_API_KEY),
+    fetch: seams.fetch,
+    now: seams.now,
+    endpointUrl: seams.endpointUrl,
+    ...(companionPin ? { companionPin, requireCompanionPin: true } : {}),
+  });
+}
+
 function localGeminiSessionPlugin(env: Record<string, string>): Plugin {
   return {
     name: 'local-gemini-session-middleware',
     apply: 'serve',
     configureServer(server) {
-      const expectedOrigin =
-        process.env.CIVICFLOW_LIVE_ORIGIN ||
-        env.CIVICFLOW_LIVE_ORIGIN ||
-        'http://localhost:5173';
-      const auditEnabled =
-        process.env.CIVICFLOW_LIVE_AUDIT !== undefined
-          ? process.env.CIVICFLOW_LIVE_AUDIT === '1'
-          : env.CIVICFLOW_LIVE_AUDIT === '1';
-      const voiceEnabled =
-        process.env.CIVICFLOW_VOICE_ENABLED !== undefined
-          ? process.env.CIVICFLOW_VOICE_ENABLED === '1'
-          : env.CIVICFLOW_VOICE_ENABLED === '1';
-      const handler = createLocalGeminiSessionHandler({
-        auditEnabled,
-        voiceEnabled,
-        expectedOrigin,
-        apiKey: process.env.GEMINI_API_KEY || env.GEMINI_API_KEY,
-      });
+      const handler = createLocalViteGeminiSessionHandler(env);
       server.middlewares.use(async (req, res, next) => {
         const url = req.url ? new URL(req.url, 'http://localhost:5173') : null;
         if (url && url.pathname === '/api/gemini/session') {
@@ -86,7 +122,8 @@ function localGeminiSessionPlugin(env: Record<string, string>): Plugin {
 export default defineConfig(({ mode }) => {
   // Vite exposes .env files through import.meta.env, but server middleware
   // reads Node's process.env. Load the full local env explicitly here and
-  // pass only the server-side credential to the session issuer.
+  // pass only the server-side credential and optional companion PIN to the
+  // session issuer. Never log those values.
   const env = loadEnv(mode, process.cwd(), '');
 
   return {

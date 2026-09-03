@@ -123,6 +123,7 @@ credential blank until that audit is authorized.
 
 ```text
 GEMINI_API_KEY=
+CIVICFLOW_COMPANION_PIN=
 CIVICFLOW_LIVE_AUDIT=0
 VITE_CIVICFLOW_LIVE_AUDIT=0
 CIVICFLOW_VOICE_ENABLED=0
@@ -131,11 +132,19 @@ CIVICFLOW_ALLOWED_ORIGINS=http://localhost:5173
 CIVICFLOW_LIVE_ORIGIN=http://localhost:5173
 ```
 
-`GEMINI_API_KEY` is server-only. It must never be placed in a `VITE_*`
-variable, committed, copied into documentation, or exposed in the browser
-bundle. The local audit and voice gates are off by default. The hosted Worker
-uses `CIVICFLOW_VOICE_ENABLED=1` only with a non-empty allowlisted origin; it
-does not honor the local audit bypass.
+`GEMINI_API_KEY` and `CIVICFLOW_COMPANION_PIN` are server-only. They must never
+be placed in a `VITE_*` variable, committed, copied into documentation as real
+values, or exposed in the browser bundle. Use empty placeholders in examples
+and tests. The local audit and voice gates are off by default. The hosted
+Worker uses `CIVICFLOW_VOICE_ENABLED=1` only with a non-empty allowlisted
+origin; it does not honor the local audit bypass. Hosted Gemini session
+issuance also fails closed unless `CIVICFLOW_COMPANION_PIN` is configured in
+the Sites environment. The public portal, manual form, and WebMCP tools stay
+available without that value. The local Vite session middleware stays ungated
+when `CIVICFLOW_COMPANION_PIN` is absent or blank in `process.env` and the
+loaded `.env.local`. A nonblank value is passed to the local session handler
+with PIN enforcement enabled. Tests use placeholders only and must not read
+or print `.env.local`.
 
 ### Build and verification
 
@@ -175,9 +184,14 @@ Exact Phase 5 candidate results are recorded in
   not part of this documentation candidate.
 
 The hosted session route returns JSON with `Cache-Control: no-store`, checks
-the request origin and method, limits the request body and session rate, and
-returns only an ephemeral access token and expiry. The provider credential is
-not part of the client contract.
+the request origin and method, authenticates a judge-provided companion access
+code before contacting Google, limits failed and successful authentication
+attempts plus successful sessions, and returns only an ephemeral access token
+and expiry. The provider credential and companion PIN are not part of the
+client contract. The browser may send the entered access code over HTTPS when
+requesting a session and may keep it only in memory for the active Live
+lifecycle, including an internal reconnect. It is never stored in
+`localStorage`, `sessionStorage`, cookies, activity, transcripts, or logs.
 
 Gemini is optional. The production client gate is explicit and defaults off;
 the public Site evidence above records the previously accepted v10 gate. This
@@ -193,27 +207,33 @@ and `Demo City`; do not replace them with real applicant information.
 
 The application stores its validated local application state in browser
 `localStorage` under `civicflow.application.v1`. Reset restores the synthetic
-seed. There is no account, authentication, cross-device state, fingerprinting,
-or custom visitor identity. This release adds no transcript store, custom
-product-event analytics client, analytics route, or D1 schema. Any Sites
-platform visitor/page-view analytics is outside the portal's application data
-model and is not a claim about custom analytics.
+seed. There is no user account, OAuth, cross-device state, fingerprinting, or
+custom visitor identity. A server-held companion access code gates only Gemini
+session issuance; it is not a site login. This release adds no transcript
+store, custom product-event analytics client, analytics route, or D1 schema.
+Any Sites platform visitor/page-view analytics is outside the portal's
+application data model and is not a claim about custom analytics.
 
 When optional Gemini is enabled, microphone/text traffic follows the configured
 Gemini Live path. Keep the interaction synthetic and review the provider's
-current terms separately. The portal's server keeps `GEMINI_API_KEY` out of the
-browser; never paste a credential into an issue, screenshot, video, or this
-repository.
+current terms separately. The portal's server keeps `GEMINI_API_KEY` and
+`CIVICFLOW_COMPANION_PIN` out of the browser; never paste a credential into an
+issue, screenshot, video, or this repository. Turning on Live shows an
+accessible access-code prompt before a session is requested. Microphone
+permission is requested only after that prompt is accepted and the session
+connects. A shared companion PIN is a billing stopgap for this demo, not a
+replacement for provider quotas or a spend cap.
 
 ## Accessibility and manual fallback
 
 The portal uses labelled controls, section headings, keyboard-operable buttons,
 status/live regions for operation feedback, and a focused reset confirmation
-dialog. The assistant confirmation uses explicit buttons: **Save change**,
-**Need correction**, and **Cancel**. The manual form path is always
-available when WebMCP or voice is unavailable. The accepted local accessibility,
-responsive, reduced-motion, confirmation, and no-submit checks are listed in
-the release evidence and prior phase ledgers.
+dialog. Enabling Live uses an accessible dialog with a labelled password input,
+**Enable Live**, and **Cancel**. The assistant confirmation uses explicit
+buttons: **Save change**, **Need correction**, and **Cancel**. The manual form
+path is always available when WebMCP or voice is unavailable. The accepted
+local accessibility, responsive, reduced-motion, confirmation, and no-submit
+checks are listed in the release evidence and prior phase ledgers.
 
 ## Limitations and deferred work
 
@@ -223,7 +243,7 @@ This release intentionally does not provide:
   benefits advice, real enrollment, or an external submission;
 - real file upload, document bytes, OCR, classification, or document
   transmission;
-- authentication, account identity, cross-device synchronization, or a
+- user accounts, OAuth, cross-device synchronization, or a
   remote application database;
 - agent submission or attestation tools;
 - custom product analytics, D1, a dashboard, or persistent visitor identity;

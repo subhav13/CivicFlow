@@ -79,9 +79,13 @@ export interface AssistantControllerDependencies {
   lifecycleTarget?: PageLifecycleTarget;
 }
 
+export interface AssistantConnectOptions {
+  accessPin?: string;
+}
+
 export interface AssistantController {
-  connect(): Promise<void>;
-  retry(): Promise<void>;
+  connect(options?: AssistantConnectOptions): Promise<void>;
+  retry(options?: AssistantConnectOptions): Promise<void>;
   disconnect(): void;
   startMicrophone(): Promise<void>;
   stopMicrophone(): void;
@@ -735,7 +739,10 @@ export function createAssistantController(
     dependencies.lifecycleTarget.addEventListener('pagehide', pagehideListener);
   }
 
-  const connectInternal = async (eventType: 'connect' | 'retry') => {
+  const connectInternal = async (
+    eventType: 'connect' | 'retry',
+    options?: AssistantConnectOptions,
+  ) => {
     if (isDisposed) return;
     freshnessCoordinator?.stop();
     invalidateSession();
@@ -751,22 +758,27 @@ export function createAssistantController(
       if (isDisposed || currentGeneration !== sessionGeneration) {
         return;
       }
-      await dependencies.client.connect();
+      await dependencies.client.connect(undefined, options?.accessPin);
       if (isDisposed || currentGeneration !== sessionGeneration) {
         return;
       }
       state = transitionSessionState(state, { type: 'connected' });
       emit({ type: 'state', state });
       freshnessCoordinator?.notifySafeBoundary();
-    } catch {
+    } catch (error: unknown) {
       if (isDisposed || currentGeneration !== sessionGeneration) {
         return;
       }
       freshnessCoordinator?.stop();
       shouldResumeMicrophoneAfterRefresh = false;
+      const authFailed =
+        error instanceof Error &&
+        error.message === 'Assistant session authentication failed.';
       state = transitionSessionState(state, {
         type: 'error',
-        message: 'Assistant connection failed.',
+        message: authFailed
+          ? 'Live access was not accepted. Try again.'
+          : 'Assistant connection failed.',
         recoverable: true,
       });
       emit({ type: 'state', state });
@@ -774,12 +786,12 @@ export function createAssistantController(
   };
 
   return {
-    async connect(): Promise<void> {
-      await connectInternal('connect');
+    async connect(options?: AssistantConnectOptions): Promise<void> {
+      await connectInternal('connect', options);
     },
 
-    async retry(): Promise<void> {
-      await connectInternal('retry');
+    async retry(options?: AssistantConnectOptions): Promise<void> {
+      await connectInternal('retry', options);
     },
 
     disconnect(): void {

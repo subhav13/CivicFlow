@@ -302,6 +302,10 @@ describe('AgentCompanion Component (Packet 2.3)', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Continue with chat' }));
+    fireEvent.change(screen.getByLabelText(/companion access code/i), {
+      target: { value: 'placeholder-access-pin' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Enable Live' }));
     await waitFor(() => expect(controller.connect).toHaveBeenCalledOnce());
     expect(controller.startMicrophone).not.toHaveBeenCalled();
   });
@@ -320,6 +324,12 @@ describe('AgentCompanion Component (Packet 2.3)', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Start voice' }));
+    expect(controller.connect).not.toHaveBeenCalled();
+    expect(controller.startMicrophone).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText(/companion access code/i), {
+      target: { value: 'placeholder-access-pin' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Enable Live' }));
     await waitFor(() => expect(controller.connect).toHaveBeenCalledOnce());
     await waitFor(() =>
       expect(controller.startMicrophone).toHaveBeenCalledOnce(),

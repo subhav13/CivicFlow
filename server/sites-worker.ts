@@ -14,6 +14,7 @@ export interface SitesWorkerEnvironment {
   GEMINI_API_KEY?: string;
   CIVICFLOW_ALLOWED_ORIGINS?: string;
   CIVICFLOW_VOICE_ENABLED?: string;
+  CIVICFLOW_COMPANION_PIN?: string;
   /** Legacy local-only flag; the hosted Worker never reads it. */
   CIVICFLOW_LIVE_AUDIT?: string;
 }
@@ -69,6 +70,8 @@ function createConfiguredSessionHandler(
     auditEnabled: false,
     apiKey: env.GEMINI_API_KEY,
     expectedOrigins,
+    companionPin: env.CIVICFLOW_COMPANION_PIN,
+    requireCompanionPin: true,
     // The hosted Worker intentionally does not honor the local audit bypass.
     voiceEnabled:
       isEnabled(env.CIVICFLOW_VOICE_ENABLED) && expectedOrigins.length > 0,

@@ -33,6 +33,7 @@ import {
 } from './ToolConfirmationCard';
 import { VoiceControls } from './VoiceControls';
 import { browserSpeechOutput, type SpeechOutputService } from './speech-output';
+import { CompanionPinDialog } from './CompanionPinDialog';
 
 export interface AssistantPanelProps {
   controller?: AssistantController | null;
@@ -105,6 +106,12 @@ export const AssistantPanel = forwardRef<
     createLiveTurnAssembler(),
   );
   const panelRef = useRef<HTMLElement>(null);
+  const liveSwitchRef = useRef<HTMLButtonElement>(null);
+  const pendingLiveIntentRef = useRef<'connect' | 'voice' | null>(null);
+  const pinDialogWasOpenRef = useRef(false);
+  const [pinDialogOpen, setPinDialogOpen] = useState(false);
+  const [pinError, setPinError] = useState<string | undefined>();
+  const [pinBusy, setPinBusy] = useState(false);
   const speechAloudRef = useRef(speechAloud);
   speechAloudRef.current = speechAloud;
   const speechRateRef = useRef(speechRate);
@@ -128,6 +135,10 @@ export const AssistantPanel = forwardRef<
 
   useEffect(() => {
     if (!enabled && controller) {
+      setPinDialogOpen(false);
+      setPinError(undefined);
+      setPinBusy(false);
+      pendingLiveIntentRef.current = null;
       if (controller.getState().status !== 'idle') {
         controller.disconnect();
       }
@@ -147,6 +158,15 @@ export const AssistantPanel = forwardRef<
       activeSpeechOutputRef.current.cancel();
     }
   }, [enabled, controller]);
+  useEffect(() => {
+    if (pinDialogOpen) {
+      pinDialogWasOpenRef.current = true;
+      return;
+    }
+    if (!pinDialogWasOpenRef.current) return;
+    pinDialogWasOpenRef.current = false;
+    liveSwitchRef.current?.focus();
+  }, [pinDialogOpen]);
   useEffect(() => {
     const liveTurnAssembler = liveTurnAssemblerRef.current;
     if (!controller) {
@@ -386,12 +406,71 @@ export const AssistantPanel = forwardRef<
     onSpeakingChangeRef.current?.(next);
   };
 
-  const ensureConnected = async (): Promise<boolean> => {
-    if (!controller || !enabled) return false;
-    if (controller.getState().status !== 'connected') {
-      await controller.connect();
+  const requestLiveAccess = (intent: 'connect' | 'voice') => {
+    if (!controller || !enabled) return;
+    if (controller.getState().status === 'connected') {
+      if (intent === 'voice') {
+        updateListening(true);
+        void controller.startMicrophone();
+      }
+      return;
     }
-    return controller.getState().status === 'connected';
+    pendingLiveIntentRef.current = intent;
+    setPinError(undefined);
+    setPinBusy(false);
+    setPinDialogOpen(true);
+  };
+
+  const handleEnableLive = async (accessPin: string) => {
+    if (!controller || !enabled) return;
+    const intent = pendingLiveIntentRef.current;
+    setPinBusy(true);
+    setPinError(undefined);
+    try {
+      await controller.connect({ accessPin });
+    } catch {
+      setPinError(
+        'Assistant connection failed. Check the local server settings and try again.',
+      );
+      setPinBusy(false);
+      return;
+    }
+    const nextSessionState = controller.getState();
+    if (nextSessionState.status !== 'connected') {
+      const failureMessage =
+        nextSessionState.status === 'error' ? nextSessionState.message : '';
+      setPinError(
+        /not accepted/i.test(failureMessage)
+          ? 'Incorrect access code. Please try again.'
+          : 'Assistant connection failed. Check the local server settings and try again.',
+      );
+      setPinBusy(false);
+      return;
+    }
+    setPinDialogOpen(false);
+    pendingLiveIntentRef.current = null;
+    setPinBusy(false);
+    if (intent === 'voice') {
+      updateListening(true);
+      await controller.startMicrophone();
+    }
+  };
+
+  const handleCancelPin = () => {
+    pendingLiveIntentRef.current = null;
+    setPinBusy(false);
+    setPinError(undefined);
+    setPinDialogOpen(false);
+  };
+
+  const handleSelectChat = () => {
+    setAssistantMode('chat');
+    requestLiveAccess('connect');
+  };
+
+  const handleSelectVoice = () => {
+    setAssistantMode('voice');
+    requestLiveAccess('voice');
   };
 
   const handleStopListening = () => {
@@ -400,18 +479,6 @@ export const AssistantPanel = forwardRef<
   };
 
   useImperativeHandle(ref, () => ({ stopListening: handleStopListening }));
-
-  const handleSelectChat = async () => {
-    setAssistantMode('chat');
-    await ensureConnected();
-  };
-
-  const handleSelectVoice = async () => {
-    setAssistantMode('voice');
-    if (!(await ensureConnected())) return;
-    updateListening(true);
-    await controller?.startMicrophone();
-  };
 
   const handleSendText = (text: string) => {
     if (!controller || !isConnected) return;
@@ -520,7 +587,7 @@ export const AssistantPanel = forwardRef<
       setPendingConfirmation(null);
       activeSpeechOutputRef.current.cancel();
     } else {
-      await controller.connect();
+      requestLiveAccess('connect');
     }
   };
 
@@ -551,6 +618,7 @@ export const AssistantPanel = forwardRef<
         {!showWelcomeChoice ? (
           <div className="assistant-live-switch-row">
             <button
+              ref={liveSwitchRef}
               className="assistant-live-switch"
               type="button"
               role="switch"
@@ -596,10 +664,10 @@ export const AssistantPanel = forwardRef<
             </p>
           </div>
           <div className="assistant-welcome-actions">
-            <button type="button" onClick={() => void handleSelectVoice()}>
+            <button type="button" onClick={handleSelectVoice}>
               Start voice
             </button>
-            <button type="button" onClick={() => void handleSelectChat()}>
+            <button type="button" onClick={handleSelectChat}>
               Continue with chat
             </button>
           </div>
@@ -659,6 +727,14 @@ export const AssistantPanel = forwardRef<
         disabled={composerDisabled}
         sendDisabled={composerSendDisabled}
       />
+      {pinDialogOpen ? (
+        <CompanionPinDialog
+          errorMessage={pinError}
+          busy={pinBusy}
+          onEnable={(accessPin) => void handleEnableLive(accessPin)}
+          onCancel={handleCancelPin}
+        />
+      ) : null}
     </section>
   );
 });

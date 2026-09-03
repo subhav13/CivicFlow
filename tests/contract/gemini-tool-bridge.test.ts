@@ -554,6 +554,33 @@ describe('Gemini tool bridge Contract (Phase 2 Packet 2.2)', () => {
     expect(surface.execute).toHaveBeenCalledTimes(1);
   });
 
+  it('executes canonical section navigation directly without a confirmation draft', async () => {
+    const { createGeminiToolBridge } = await import(
+      /* @vite-ignore */
+      '../../src/assistant/gemini-tool-bridge'
+    );
+    const surface = makeSurface([TOOL_CATALOG.navigate_to_section]);
+    const bridge = createGeminiToolBridge(surface);
+    const call = {
+      callId: 'call-navigate-direct',
+      name: 'navigate_to_section',
+      argumentsJson: JSON.stringify({ section: 'coverage' }),
+    };
+
+    const response = await bridge.executeToolCall(call);
+
+    expect(response).toMatchObject({
+      kind: 'result',
+      callId: call.callId,
+    });
+    expect(response.kind).not.toBe('confirmation_required');
+    expect(surface.execute).toHaveBeenCalledWith(
+      call.name,
+      call.argumentsJson,
+      undefined,
+    );
+  });
+
   it('rejects a tool that disappeared after the assistant snapshot', async () => {
     const { createGeminiToolBridge } = await import(
       /* @vite-ignore */

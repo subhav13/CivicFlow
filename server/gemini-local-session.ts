@@ -156,8 +156,11 @@ export interface LocalGeminiSessionHandlerOptions {
   fetch?: typeof fetch;
   endpointUrl?: string;
   maxSessionsPerWindow?: number;
+  maxAuthAttemptsPerWindow?: number;
   rateWindowMs?: number;
   now?: () => number;
+  companionPin?: string;
+  requireCompanionPin?: boolean;
 }
 
 export function createLocalGeminiSessionHandler(
@@ -192,8 +195,11 @@ export function createLocalGeminiSessionHandler(
       options.maxSessionDurationMs ?? GEMINI_SESSION_EXPIRY_MS,
     maxBodyBytes,
     maxSessionsPerWindow: options.maxSessionsPerWindow ?? 10,
+    maxAuthAttemptsPerWindow: options.maxAuthAttemptsPerWindow,
     rateWindowMs: options.rateWindowMs ?? 60_000,
     now: options.now,
+    companionPin: options.companionPin,
+    requireCompanionPin: options.requireCompanionPin,
     issueEphemeralSession: issuer,
   });
 }

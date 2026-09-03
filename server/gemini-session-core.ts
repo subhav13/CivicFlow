@@ -15,6 +15,10 @@ export interface IssuedEphemeralSession {
   expiresAt: string;
 }
 
+export const ACCESS_PIN_MAX_CHARS = 128;
+export const SESSION_AUTH_FAILED_ERROR =
+  'Assistant session authentication failed.';
+
 export interface GeminiSessionCoreConfig {
   enabled?: boolean;
   expectedOrigin?: string;
@@ -26,8 +30,11 @@ export interface GeminiSessionCoreConfig {
   idleTimeoutMs?: number;
   maxBodyBytes?: number;
   maxSessionsPerWindow?: number;
+  maxAuthAttemptsPerWindow?: number;
   rateWindowMs?: number;
   now?: () => number;
+  companionPin?: string;
+  requireCompanionPin?: boolean;
   issueEphemeralSession(
     request: GeminiSessionIssueRequest,
   ): Promise<IssuedEphemeralSession>;
@@ -45,10 +52,47 @@ function jsonResponse(body: unknown, status: number): Response {
   });
 }
 
+function configuredCompanionPin(config: GeminiSessionCoreConfig): string {
+  return typeof config.companionPin === 'string'
+    ? config.companionPin.trim()
+    : '';
+}
+
+function submittedAccessPin(parsedBody: unknown): string {
+  if (parsedBody === undefined || parsedBody === null) return '';
+  if (typeof parsedBody !== 'object' || Array.isArray(parsedBody)) return '';
+  const value = (parsedBody as Record<string, unknown>).accessPin;
+  return typeof value === 'string' ? value : '';
+}
+
+async function digestUtf8(value: string): Promise<Uint8Array> {
+  const digest = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(value),
+  );
+  return new Uint8Array(digest);
+}
+
+function digestEquals(left: Uint8Array, right: Uint8Array): boolean {
+  const length = Math.max(left.length, right.length, 1);
+  let diff = left.length ^ right.length;
+  for (let index = 0; index < length; index += 1) {
+    diff |= (left[index] ?? 0) ^ (right[index] ?? 0);
+  }
+  return diff === 0;
+}
+
+function pruneTimestamps(timestamps: number[], cutoff: number): void {
+  while (timestamps.length > 0 && timestamps[0] <= cutoff) {
+    timestamps.shift();
+  }
+}
+
 export function createGeminiSessionCore(
   config: GeminiSessionCoreConfig,
 ): GeminiSessionHandler {
   const sessionTimestamps: number[] = [];
+  const authAttemptTimestamps: number[] = [];
   const nowFn = config.now ?? Date.now;
   const rateWindowMs = config.rateWindowMs ?? 60_000;
   const allowedOrigins = new Set(
@@ -100,23 +144,56 @@ export function createGeminiSessionCore(
       return jsonResponse({ error: 'Payload too large.' }, 413);
     }
 
+    let parsedBody: unknown;
     if (rawBody.trim().length > 0) {
       try {
-        JSON.parse(rawBody);
+        parsedBody = JSON.parse(rawBody);
       } catch {
         return jsonResponse({ error: 'Invalid JSON body.' }, 400);
       }
     }
 
+    const expectedPin = configuredCompanionPin(config);
+    if (config.requireCompanionPin && expectedPin.length === 0) {
+      return jsonResponse({ error: 'Session endpoint is disabled.' }, 404);
+    }
+
     const currentTime = nowFn();
+    const cutoff = currentTime - rateWindowMs;
+    const pinGated =
+      Boolean(config.requireCompanionPin) || expectedPin.length > 0;
+    if (pinGated) {
+      const maxAuthAttempts =
+        config.maxAuthAttemptsPerWindow ?? config.maxSessionsPerWindow ?? 10;
+      if (maxAuthAttempts > 0) {
+        pruneTimestamps(authAttemptTimestamps, cutoff);
+        if (authAttemptTimestamps.length >= maxAuthAttempts) {
+          return jsonResponse(
+            { error: 'Assistant session is temporarily unavailable.' },
+            429,
+          );
+        }
+        authAttemptTimestamps.push(currentTime);
+      }
+
+      const submitted = submittedAccessPin(parsedBody);
+      const trimmedSubmitted = submitted.trim();
+      const formatOk =
+        trimmedSubmitted.length > 0 && submitted.length <= ACCESS_PIN_MAX_CHARS;
+      const expectedDigest = await digestUtf8(expectedPin);
+      const submittedDigest = await digestUtf8(
+        formatOk ? trimmedSubmitted : submitted,
+      );
+      if (!formatOk || !digestEquals(submittedDigest, expectedDigest)) {
+        return jsonResponse({ error: SESSION_AUTH_FAILED_ERROR }, 401);
+      }
+    }
+
     if (
       config.maxSessionsPerWindow !== undefined &&
       config.maxSessionsPerWindow > 0
     ) {
-      const cutoff = currentTime - rateWindowMs;
-      while (sessionTimestamps.length > 0 && sessionTimestamps[0] <= cutoff) {
-        sessionTimestamps.shift();
-      }
+      pruneTimestamps(sessionTimestamps, cutoff);
       if (sessionTimestamps.length >= config.maxSessionsPerWindow) {
         return jsonResponse(
           { error: 'Assistant session is temporarily unavailable.' },

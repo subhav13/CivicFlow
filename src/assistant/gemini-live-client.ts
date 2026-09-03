@@ -39,6 +39,7 @@ export interface LiveSocket {
 export interface GeminiLiveClientDependencies {
   issueEphemeralSession(
     signal?: AbortSignal,
+    accessPin?: string,
   ): Promise<EphemeralSessionCredential>;
   connectSocket(credential: EphemeralSessionCredential): Promise<LiveSocket>;
 }
@@ -76,7 +77,7 @@ export interface LiveToolResponse {
 }
 
 export interface GeminiLiveClient {
-  connect(signal?: AbortSignal): Promise<void>;
+  connect(signal?: AbortSignal, accessPin?: string): Promise<void>;
   /** Replace an accepted session after a tool-surface revision. */
   reconnect?(): Promise<void>;
   disconnect(): void;
@@ -280,6 +281,7 @@ export function createGeminiLiveClient(
   let pendingBinding: SocketBinding | undefined;
   let connected = false;
   let connectGeneration = 0;
+  let retainedAccessPin: string | undefined;
   const listeners = new Set<(event: GeminiLiveEvent) => void>();
 
   const emit = (event: GeminiLiveEvent) => {
@@ -499,7 +501,10 @@ export function createGeminiLiveClient(
   ): Promise<void> => {
     let credential: EphemeralSessionCredential;
     try {
-      credential = await dependencies.issueEphemeralSession(signal);
+      credential = await dependencies.issueEphemeralSession(
+        signal,
+        retainedAccessPin,
+      );
     } catch (err) {
       if (!preserveActive && generation === connectGeneration) {
         connected = false;
@@ -546,8 +551,12 @@ export function createGeminiLiveClient(
   };
 
   return {
-    async connect(signal?: AbortSignal): Promise<void> {
+    async connect(signal?: AbortSignal, accessPin?: string): Promise<void> {
       const generation = ++connectGeneration;
+      retainedAccessPin =
+        typeof accessPin === 'string' && accessPin.trim().length > 0
+          ? accessPin
+          : undefined;
       if (pendingBinding) {
         closeBinding(
           pendingBinding,
@@ -558,7 +567,12 @@ export function createGeminiLiveClient(
         );
       }
       if (activeBinding) closeBinding(activeBinding);
-      await openBinding(generation, false, signal);
+      try {
+        await openBinding(generation, false, signal);
+      } catch (error) {
+        retainedAccessPin = undefined;
+        throw error;
+      }
     },
 
     async reconnect(): Promise<void> {
@@ -583,6 +597,7 @@ export function createGeminiLiveClient(
 
     disconnect(): void {
       connectGeneration++;
+      retainedAccessPin = undefined;
       const cancellation = new GeminiLiveConnectionError(
         'Assistant connection was cancelled.',
         'network',

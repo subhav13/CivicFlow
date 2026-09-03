@@ -11,10 +11,10 @@
 
 - **Feature:** CivicFlow Gemini Live text and voice companion
 - **Version:** v1
-- **Status:** `in-progress` through accepted local Phase 5 Packets 5.1–5.3 over the mocked Gemini runtime; the real Packet 5.3 provider audit and Phases 6–8 remain pending a configured local credential or separate decision
+- **Status:** `release-authorized` for the validated Phase 8 judge companion-PIN gate, confirmation-free navigation, and connection feedback; the user authorized final GitHub synchronization, Sites secret update, and deployment on 2026-09-04
 - **Planning owner:** the coordinating Codex task; implementation ownership is assigned only by a phase-specific handoff
 - **Implementation routes:** native `luna_max` (`gpt-5.6-luna`, `max` reasoning) for the Phase 0 documentation packet; OMP Antigravity Gemini 3.7 Flash at `high` reasoning for the separately authorized Phase 1, Phase 2, Phase 3, Phase 4, and local Phase 5 implementations
-- **Last updated:** 2026-08-29
+- **Last updated:** 2026-09-04
 - **Repository:** `/Users/SubhavMathur/Desktop/Subhav Main/AI Projects/CivicFlow`
 - **Parent ledgers:** [CivicFlow WebMCP v1](../civicflow-webmcp-v1/MASTER.md) and [CivicFlow visible collaboration UX v1](../civicflow-collaboration-ux-v1/MASTER.md)
 - **Public baseline URL:** `https://civicflow.codesm.chatgpt.site`
@@ -326,16 +326,17 @@ sync is not part of this hackathon.
 
 ## Phase map
 
-| Phase                                         | Ledger document                                                                               | Status        | Dependency                                       | Exit gate                                                 |
-| --------------------------------------------- | --------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------ | --------------------------------------------------------- |
-| 0 — baseline and live-evidence/source closure | [01-baseline-and-live-evidence.md](phases/01-baseline-and-live-evidence.md)                   | `validated`   | recorded HEAD and allowlisted docs-only baseline | Phase 0 evidence and parent-link review                   |
-| 1 — agent feedback and notification polish    | [02-agent-feedback-polish.md](phases/02-agent-feedback-polish.md)                             | `validated`   | accepted Phase 0                                 | Feedback Gate A: visible, truthful same-tab activity      |
-| 2 — current tool surface and Gemini bridge    | [03-current-tool-and-gemini-bridge.md](phases/03-current-tool-and-gemini-bridge.md)           | `validated`   | Feedback Gate A                                  | Bridge Gate B: exact current-tool mapping                 |
-| 3 — secure Gemini Live runtime                | [04-secure-gemini-live-runtime.md](phases/04-secure-gemini-live-runtime.md)                   | `validated`   | Bridge Gate B and docs verification              | Runtime Gate C: mocked secure lifecycle                   |
-| 4 — unified voice/text companion              | [05-unified-voice-text-companion.md](phases/05-unified-voice-text-companion.md)               | `validated`   | Runtime Gate C                                   | Companion Gate D: accessible shared session UI            |
-| 5 — integration, accessibility, and live gate | [06-integration-accessibility-live-gate.md](phases/06-integration-accessibility-live-gate.md) | `in-progress` | Companion Gate D                                 | Gate E: local proof plus separately authorized live audit |
-| 6 — release package                           | [07-release-package.md](phases/07-release-package.md)                                         | `planned`     | P0 and explicit voice include/cut decision       | Package Gate F: reproducible truthful artifacts           |
-| 7 — final release gate                        | [08-final-release-gate.md](phases/08-final-release-gate.md)                                   | `planned`     | Package Gate F and external approvals            | Gate G: exact-source independent GO                       |
+| Phase                                         | Ledger document                                                                               | Status         | Dependency                                        | Exit gate                                                 |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------- | -------------- | ------------------------------------------------- | --------------------------------------------------------- |
+| 0 — baseline and live-evidence/source closure | [01-baseline-and-live-evidence.md](phases/01-baseline-and-live-evidence.md)                   | `validated`    | recorded HEAD and allowlisted docs-only baseline  | Phase 0 evidence and parent-link review                   |
+| 1 — agent feedback and notification polish    | [02-agent-feedback-polish.md](phases/02-agent-feedback-polish.md)                             | `validated`    | accepted Phase 0                                  | Feedback Gate A: visible, truthful same-tab activity      |
+| 2 — current tool surface and Gemini bridge    | [03-current-tool-and-gemini-bridge.md](phases/03-current-tool-and-gemini-bridge.md)           | `validated`    | Feedback Gate A                                   | Bridge Gate B: exact current-tool mapping                 |
+| 3 — secure Gemini Live runtime                | [04-secure-gemini-live-runtime.md](phases/04-secure-gemini-live-runtime.md)                   | `validated`    | Bridge Gate B and docs verification               | Runtime Gate C: mocked secure lifecycle                   |
+| 4 — unified voice/text companion              | [05-unified-voice-text-companion.md](phases/05-unified-voice-text-companion.md)               | `validated`    | Runtime Gate C                                    | Companion Gate D: accessible shared session UI            |
+| 5 — integration, accessibility, and live gate | [06-integration-accessibility-live-gate.md](phases/06-integration-accessibility-live-gate.md) | `in-progress`  | Companion Gate D                                  | Gate E: local proof plus separately authorized live audit |
+| 6 — release package                           | [07-release-package.md](phases/07-release-package.md)                                         | `planned`      | P0 and explicit voice include/cut decision        | Package Gate F: reproducible truthful artifacts           |
+| 7 — final release gate                        | [08-final-release-gate.md](phases/08-final-release-gate.md)                                   | `planned`      | Package Gate F and external approvals             | Gate G: exact-source independent GO                       |
+| 8 — judge-only companion PIN                  | [09-judge-companion-pin.md](phases/09-judge-companion-pin.md)                                 | `codex-review` | Deployed companion and extended submission window | Gate H: public WebMCP plus PIN-gated Gemini issuance      |
 
 Phase 0 was the documentation-only first handoff. Its documentation/source
 identity closure is validated. Phase 1 was later authorized through a separate
@@ -573,16 +574,17 @@ mock cannot be presented as Gemini Live evidence.
 
 ## Open decisions
 
-| Decision                                   | Current position                                                                                                                     | Resolution gate         |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ----------------------- |
-| Exact Gemini Live model ID                 | `gemini-3.1-flash-live-preview` verified in official docs on 2026-08-28; Preview and live availability still require recheck         | Phase 5 live gate       |
-| Gemini transport and credential boundary   | Official docs verify stateful WebSockets and backend-issued ephemeral tokens; no real connection was made                            | Phase 5 live gate       |
-| Exact hosting support for a session broker | Sites docs describe HTTP/HTTPS/WebSockets and hosted secrets; local adapter is not wired or deployed, so compatibility is unresolved | Phase 5 live gate       |
-| Free-tier quota/retention terms            | Current pricing/free-tier data-use caveat recorded; exact quota, rates, regional availability, and live terms require recheck        | Phase 5 live gate       |
-| Voice in final public demo                 | Off unless Gate E is green and separately authorized                                                                                 | Phase 5 live gate       |
-| License                                    | Parent release plan says MIT unless owner chooses another                                                                            | Phase 6 package         |
-| Cross-tab synchronization                  | Explicitly out of hackathon scope                                                                                                    | No later than release   |
-| Undo                                       | Explicitly deferred from collaboration UX path                                                                                       | Not part of this ledger |
+| Decision                                   | Current position                                                                                                                                 | Resolution gate         |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------- |
+| Exact Gemini Live model ID                 | `gemini-3.1-flash-live-preview` verified in official docs on 2026-08-28; Preview and live availability still require recheck                     | Phase 5 live gate       |
+| Gemini transport and credential boundary   | Official docs verify stateful WebSockets and backend-issued ephemeral tokens; no real connection was made                                        | Phase 5 live gate       |
+| Exact hosting support for a session broker | Sites docs describe HTTP/HTTPS/WebSockets and hosted secrets; local adapter is not wired or deployed, so compatibility is unresolved             | Phase 5 live gate       |
+| Free-tier quota/retention terms            | Current pricing/free-tier data-use caveat recorded; exact quota, rates, regional availability, and live terms require recheck                    | Phase 5 live gate       |
+| Voice in final public demo                 | Off unless Gate E is green and separately authorized                                                                                             | Phase 5 live gate       |
+| License                                    | Parent release plan says MIT unless owner chooses another                                                                                        | Phase 6 package         |
+| Cross-tab synchronization                  | Explicitly out of hackathon scope                                                                                                                | No later than release   |
+| Undo                                       | Explicitly deferred from collaboration UX path                                                                                                   | Not part of this ledger |
+| Judge-only companion PIN                   | Required only for Gemini session issuance; the portal and WebMCP tools remain public. The secret is server-held and entered only at Live enable. | Phase 8 Gate H          |
 
 If any open decision conflicts with the one-state, one-WebMCP-surface,
 synthetic-only, or human-only-submission invariant, stop and request a user

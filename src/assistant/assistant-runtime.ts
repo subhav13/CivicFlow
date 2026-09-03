@@ -115,21 +115,29 @@ export function createAssistantRuntime(
   });
 
   const client = createGeminiLiveClient({
-    issueEphemeralSession: async (signal?: AbortSignal) => {
+    issueEphemeralSession: async (signal?: AbortSignal, accessPin?: string) => {
       let response: Response;
+      const requestBody =
+        typeof accessPin === 'string' && accessPin.trim().length > 0
+          ? JSON.stringify({ accessPin })
+          : JSON.stringify({});
       try {
         response = await fetchFn(endpointUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({}),
+          body: requestBody,
           signal,
         });
       } catch (err) {
         throw new Error(
           `Failed to reach session endpoint: ${err instanceof Error ? err.message : String(err)}`,
         );
+      }
+
+      if (response.status === 401) {
+        throw new Error('Assistant session authentication failed.');
       }
 
       if (!response.ok) {

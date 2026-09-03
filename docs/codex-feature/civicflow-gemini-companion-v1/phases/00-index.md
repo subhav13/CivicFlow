@@ -2,10 +2,10 @@
 
 ## Current status
 
-- **Feature status:** `in-progress` through the accepted local Phase 5 Packets
-  5.1–5.3 over the mocked Gemini runtime; the real Packet 5.3 provider audit
-  and Phases 6–8 remain pending a configured local credential or separate
-  decision.
+- **Feature status:** `release-authorized` for the validated Phase 8 judge
+  companion-PIN gate, confirmation-free navigation, and connection feedback.
+  The user authorized GitHub synchronization, Sites secrets, and deployment on
+  2026-09-04; Devpost form edits remain outside this release action.
 - **First handoff:** Phase 0 was documentation-only. Phase 1 Packets 1.1–1.3
   were separately authorized and are independently validated; later phases
   still require their own prompts.
@@ -31,6 +31,7 @@
 | 5 — integration, accessibility, and live gate | [06-integration-accessibility-live-gate.md](06-integration-accessibility-live-gate.md) | `in-progress` | Gate D                                           | Gate E: local proof and authorized live audit |
 | 6 — release package                           | [07-release-package.md](07-release-package.md)                                         | `planned`     | P0 and voice include/cut decision                | Gate F: truthful reproducible package         |
 | 7 — final release gate                        | [08-final-release-gate.md](08-final-release-gate.md)                                   | `planned`     | Gate F and external approvals                    | Gate G: exact-source independent GO           |
+| 8 — judge-only companion PIN                  | [09-judge-companion-pin.md](09-judge-companion-pin.md)                                 | `validated`   | Deployed companion and extended deadline         | Gate H: authenticated Gemini issuance         |
 
 ## Dependency graph
 
@@ -43,6 +44,7 @@ Phase 0 source/evidence closure
   → Phase 5 local integration and separately authorized live audit
   → Phase 6 release package
   → Phase 7 final review, release, and submission gates
+  → Phase 8 judge-only Gemini companion access gate
 ```
 
 Phase 0 is validated by the documentation/source review recorded in its phase
@@ -75,6 +77,9 @@ here.
   fresh-checkout and claim-trace checks.
 - **Gate G:** independent exact-source review accepts release identity and all
   externally authorized rehearsals; Devpost remains separately authorized.
+- **Gate H:** WebMCP/manual use remains public; Gemini token issuance requires
+  a server-held PIN, fails closed without it, and passes focused security,
+  accessibility, and regression tests before any release action.
 
 ## Phase 1 evidence pointer
 

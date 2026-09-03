@@ -1925,6 +1925,26 @@ h2 {
   background: #fff1f0;
 }
 
+.companion-pin-dialog .tool-confirmation-modal-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+}
+
+.companion-pin-dialog-status-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
 .tool-confirmation-modal-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1936,6 +1956,74 @@ h2 {
 .tool-confirmation-modal-actions .tool-cancel-button {
   min-width: 6.5rem;
   padding: 0.6rem 0.85rem;
+}
+
+.companion-pin-dialog-form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.companion-pin-dialog-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.65rem;
+  color: #216a63;
+  background: #e3f3ee;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.companion-pin-dialog-spinner {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid #9acfc3;
+  border-top-color: #0f766e;
+  border-radius: 50%;
+  animation: companion-pin-dialog-spin 0.8s linear infinite;
+}
+
+@keyframes companion-pin-dialog-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.companion-pin-dialog-field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.companion-pin-dialog-field label {
+  color: #1f4f49;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.companion-pin-dialog-field input {
+  width: 100%;
+  min-width: 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #b9dad2;
+  border-radius: 0.7rem;
+  color: #213532;
+  background: #ffffff;
+  font-size: 0.86rem;
+}
+
+.companion-pin-dialog-field input:focus-visible {
+  outline: 2px solid #0f766e;
+  outline-offset: 1px;
+}
+
+.companion-pin-dialog-field input:disabled {
+  opacity: 0.55;
+  background: #f3f4f6;
+  cursor: not-allowed;
 }
 .tool-correction-button {
   padding: 0.35rem 0.65rem;
