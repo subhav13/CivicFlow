@@ -1,9 +1,11 @@
 # CivicFlow public demo video storyboard
 
-Target duration: **2 minutes 30 seconds**. The challenge requires a public
-YouTube video shorter than three minutes, with clear audio, showing the
-functioning project and how WebMCP is used. This storyboard is a local
-production plan, not proof that a video has been uploaded.
+Historical target duration: **2 minutes 30 seconds**. The finished public video
+is <https://youtu.be/OoCD4bAo9EA>, titled
+`CivicFlow DEMO: A WebMCP Powered Public Benefit Portal`, with a verified
+duration of **2 minutes 19 seconds**. The challenge requires a public YouTube
+video shorter than three minutes, with clear audio, showing the functioning
+project and how WebMCP is used.
 
 Use synthetic data only. Record clean narration or captions. Do not add
 third-party copyrighted music, trademarks/marks, stock footage with unclear
@@ -23,7 +25,7 @@ legible on screen.
 | 1:32–1:48 (16s) | “Tools also follow context: selecting a member, income source, or Review & Sign exposes only the relevant update/review tool.”                    | Select a household member, then income, then Review & Sign; show the contextual tool list changing.                                                                                                      | `local-tested`: registry manager contextual registration.                                                                                                      | Use a source/test overlay and say the live transition requires separate deployment evidence.               |
 | 1:48–2:08 (20s) | “The optional Gemini companion uses that same current surface. A mutation pauses for a visible button decision, not a spoken approval.”           | On the current Site if the prior gate is available, propose a synthetic update by text or voice; show the confirmation card, then click **Save change**.                                                 | `hosted-tested` / `user-confirmed` for the accepted v10 assistant behavior; current publication is documentation-only; `local-tested` for confirmation policy. | Use the local text/manual WebMCP path; state that voice is optional and not revalidated in this recording. |
 | 2:08–2:22 (14s) | “Submit Demo is deliberately human-only and fictional.”                                                                                           | Open Review & Sign, show attestation wording, click the visible **Submit Demo**, and show “No network request was made.”                                                                                 | `local-tested`: ReviewSection and no-submit tests.                                                                                                             | Show the copy and button without clicking if the rehearsal state is not complete.                          |
-| 2:22–2:30 (8s)  | “No government integration, eligibility decision, real upload, or agent submission is claimed.”                                                   | Show the reset dialog, then the title card with live URL, repository/video publication-pending status, and limitations.                                                                                  | `deferred`/`unsupported`: explicit scope boundary; publication still pending.                                                                                  | End on the source/evidence document with the same limitation text.                                         |
+| 2:22–2:30 (8s)  | “No government integration, eligibility decision, real upload, or agent submission is claimed.”                                                   | Show the reset dialog, then the title card with the live URL, public repository, video link, and limitations.                                                                                            | `deferred`/`unsupported`: explicit scope boundary.                                                                                                             | End on the source/evidence document with the same limitation text.                                         |
 
 Total target: **150 seconds**. Keep the final file below 180 seconds even after
 title cards or transitions.
@@ -32,8 +34,8 @@ title cards or transitions.
 
 - Narration or captions clearly explain what WebMCP contributes; silence or
   music alone is not sufficient.
-- The video is public on YouTube only after a separately authorized upload;
-  the final URL is currently publication-pending.
+- The finished video is public at <https://youtu.be/OoCD4bAo9EA> and is 2:19
+  long; keep it public and unchanged through the judging period.
 - Confirm the runtime and any shown tool calls match one exact source/deployment
   identity. Keep the accepted v10 application behavior distinct from the
   documentation-only Phase 5 publication.

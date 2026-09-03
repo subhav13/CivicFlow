@@ -6,13 +6,15 @@
 current Site.** This record covers Phase 5 Packets 5.0–5.4 only. The owner
 selected MIT, and the published package includes a standard root `LICENSE` with
 the project-level notice. The authorized Sites commit, managed-source push, and
-deployment are recorded below; eligible public-source publication, video,
-Devpost, and future live-provider actions remain separate external gates.
+deployment are recorded below. The public GitHub repository and YouTube demo
+are now available; Devpost submission and future live-provider actions remain
+separate owner-controlled gates.
 
 Evidence labels used here:
 
 - `local-tested`: source-backed automated or local-browser evidence;
 - `hosted-tested`: an observed check against an exact hosted identity;
+- `public-verified`: an observed public artifact and URL;
 - `user-confirmed`: the owner's recorded public UI confirmation;
 - `deferred`: intentionally excluded from this release; and
 - `unsupported`: a claim that must not be made about CivicFlow.
@@ -49,9 +51,23 @@ the current Site also carries the Phase 5 documentation and license package.
 Do not use the documentation-only publication as new evidence for application
 behavior beyond the already accepted version 10 runtime.
 
+### Final submission artifacts
+
+Verified 2026-09-03 before the challenge deadline:
+
+| Artifact            | Evidence                                                                                                        |
+| ------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Live portal         | <https://civicflow.codesm.chatgpt.site/>                                                                        |
+| Public source       | <https://github.com/subhav13/CivicFlow> (`visibility: public`)                                                  |
+| Open-source license | Root [MIT license](https://github.com/subhav13/CivicFlow/blob/main/LICENSE)                                     |
+| Public video        | <https://youtu.be/OoCD4bAo9EA>, title `CivicFlow DEMO: A WebMCP Powered Public Benefit Portal`, duration `2:19` |
+
+The promotional cover in `docs/assets/civicflow-cover.jpg` is labelled as a
+mockup; literal product screenshots remain the preferred evidence gallery.
+
 ## Official requirements checked
 
-Accessed 2026-08-31 (Asia/Kolkata):
+Rechecked 2026-09-03 (Asia/Kolkata):
 
 - [WebMCP Challenge page](https://webmcp.devpost.com/)
 - [WebMCP Challenge official rules](https://webmcp.devpost.com/rules)
@@ -95,9 +111,9 @@ within these rows.
 | EV-11 | Accepted deployed runtime is available at the public URL                      | `hosted-tested` + `user-confirmed`                | Application SHA `0632c5d503a98b9d37e2450f2e9c1f3265698930`, accepted Sites v10 checks, current documentation-only publication, public URL, Phase 4 ledger | Publication adds documentation/license only; no new application UI proof is claimed                      |
 | EV-12 | Sites platform traffic analytics is the only analytics scope                  | `deferred`                                        | Phase 4C decision in `civicflow-final-hardening-v1` ledger                                                                                                | No custom analytics client, event route, D1, dashboard, or persistent visitor identity                   |
 | EV-13 | Candidate setup/build/test gates are reproducible                             | `local-tested`                                    | Disposable exact candidate and command results in the verification section below                                                                          | Sol High accepted the local packets; external release gates remain                                       |
-| EV-14 | Public source repository with detectable open-source license is ready         | `blocked`                                         | Owner-selected MIT root `LICENSE`; Sites-managed source push complete; official rules; no eligible public GitHub/GitLab/Bitbucket URL or push yet         | Publication-pending; public-repository detectability is not completed proof                              |
-| EV-15 | Public YouTube demo is ready                                                  | `blocked`                                         | Official rules; no public URL or upload authorization exists                                                                                              | Storyboard only; publication-pending                                                                     |
-| EV-16 | Devpost submission is ready                                                   | `blocked`                                         | No Devpost mutation authorized and no submission URL exists                                                                                               | Draft only; not submitted                                                                                |
+| EV-14 | Public source repository with detectable open-source license is ready         | `public-verified`                                 | Public repository <https://github.com/subhav13/CivicFlow>; root `LICENSE` fetched from `main` and contains the MIT text                                   | Keep the repository public and unchanged through judging                                                 |
+| EV-15 | Public YouTube demo is ready                                                  | `public-verified`                                 | <https://youtu.be/OoCD4bAo9EA>; YouTube showed the CivicFlow demo title and a duration of `2:19`                                                          | Owner must ensure audio/content rights and keep the video public through judging                         |
+| EV-16 | Devpost submission is ready                                                   | `draft-ready`                                     | Complete copy-ready form draft in `docs/release/civicflow-devpost-draft.md`                                                                               | Owner must fill account-specific fields, submit, and verify the entry is not left in draft               |
 
 The following are explicitly excluded as `unsupported`: government integration,
 eligibility determination, official benefits advice, real enrollment, real
@@ -201,10 +217,32 @@ Final candidate status is clean `main`; the seven allowlisted artifacts are
 committed, pushed to the Sites-managed source repository, and published in the
 current documentation-only Site update. EV-13 is locally evidenced, the owner license is present,
 and independent Sol High review is **GO for local packets /
-GO-with-external-gates for Phase 5**. An eligible public-repository URL/push,
-public-repository license detectability, video, Devpost, and continued
-judge-access gates remain open; this is not an external challenge-submission
-GO.
+GO-with-external-gates for Phase 5**. The public repository, license, and video
+gates are now closed. Devpost form submission, account-specific fields, final
+gallery selection, and continued judge access remain owner-controlled.
+
+### Submission-document refresh verification
+
+Observed 2026-09-03 for the README, Devpost draft, release evidence, video
+storyboard, and promotional cover update:
+
+- `npm run format:check` — **PASS**.
+- `npm run scan:secrets` — **PASS**.
+- `git diff --check` — **PASS**.
+- `npm run verify` — **NOT PASS as an aggregate run**: the parallel unit stage
+  stopped on three 5-second UI-test timeouts after 517 tests passed. No later
+  aggregate stages ran.
+- `npm run test:unit -- --maxWorkers=1` — **PASS**; 53 files and 520 tests.
+- `npm run test:contract -- --maxWorkers=1` — **PASS**; 19 files and 166 tests.
+- `npm run build` — **PASS**; 349 client modules and 6 Worker modules built.
+- `npm run test:e2e` — **NOT PASS as a parallel run**: 33 tests passed and
+  three tests timed out at 30 seconds.
+- `npm run test:e2e -- --workers=1 tests/e2e/golden-path.spec.ts tests/e2e/mobile-six-step-flow.spec.ts`
+  — **PASS**; all 5 tests in the affected specs passed in 16.5 seconds.
+
+The candidate changes no application, server, or test source. The serial
+results distinguish the parallel resource timeouts from a deterministic
+product regression without rewriting either failed aggregate result as a pass.
 
 ## Artifact and security audit
 
@@ -244,22 +282,18 @@ defined by `scripts/scan-secrets.mjs`.
 
 ## External release gates still unresolved
 
-1. Owner separately authorizes push to an eligible public GitHub, GitLab, or
-   Bitbucket repository and verifies the detectable license in the repository
-   About section. The Sites-managed source push is not that public challenge
-   repository.
-2. Owner separately authorizes and uploads the under-three-minute demo to
-   public YouTube, then records its real URL and audio/duration evidence.
-3. Owner separately authorizes Devpost account/form mutation and final
-   submission; the prepared draft is not a submission.
-4. The public Site and judge access must remain available through the judging
-   period. A product/build/environment change would reopen deployment review.
+1. Add the final gallery images and account-specific fields in Devpost.
+2. Review and submit the Devpost entry, then confirm **My Projects** shows
+   **Submitted**, not draft.
+3. Keep the repository, video, public Site, and submission available and
+   unchanged through the judging period. A product/build/environment change
+   would reopen deployment review.
 
 ## Handoff state
 
-This document records the independently accepted local package and its
-documentation-only Sites publication. External challenge-submission GO remains
-withheld. Independent reviewer routing and evidence:
+This document records the independently accepted local package, public release
+artifacts, and Sites publication. Devpost submission remains an owner action.
+Independent reviewer routing and evidence:
 
 ```text
 MODEL: gpt-5.6-sol

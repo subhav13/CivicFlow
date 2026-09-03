@@ -1,29 +1,38 @@
-# CivicFlow Devpost description draft
+# CivicFlow Devpost submission draft
 
-**Submission status: draft only. Do not submit.** The repository and demo
-video links below are explicitly publication-pending because no eligible public
-source URL or public YouTube upload exists yet. The owner-selected MIT license
-is present in the published Sites package, but the Sites-managed repository is
-not the eligible public-source destination required by the challenge. This
-document is prepared for a later owner-authorized Devpost entry and does not
-mutate Devpost.
+**Submission status: ready to paste; not submitted by this document.** The live
+project, public source repository, MIT license, and public YouTube video are in
+place. The owner must still review the fields below, fill the account-specific
+items, save the Devpost form, and confirm that **My Projects** shows
+**Submitted**, not draft.
 
 ## Links and release identity
 
-- Live project: <https://civicflow.codesm.chatgpt.site> (current
-  documentation-only Sites publication, environment revision 2; application
-  behavior hosted-tested/user-confirmed on the accepted version 10 identity on
-  2026-08-31 Asia/Kolkata).
-- Public code repository: **PUBLICATION PENDING — an eligible public GitHub,
-  GitLab, or Bitbucket URL will be added only after the owner authorizes a
-  commit and public push; the local candidate contains the owner-selected MIT
-  license but has no public repository URL yet.**
-- Public demo video: **PUBLICATION PENDING — a public YouTube URL will be added
-  only after an owner-authorized upload verifies clear audio and duration under
-  three minutes.**
+- Live project: <https://civicflow.codesm.chatgpt.site/>
+- Public code repository: <https://github.com/subhav13/CivicFlow>
+- Public demo video: <https://youtu.be/OoCD4bAo9EA>
+- Video title: `CivicFlow DEMO: A WebMCP Powered Public Benefit Portal`
+- Video duration: `2:19`
+- License: [MIT](../../LICENSE)
 
-The live URL identifies the current documentation-only Sites publication; its
-application behavior is unchanged from the accepted version 10 runtime.
+## Copy-ready form fields
+
+- **Project name:** `CivicFlow: A WebMPC Public Benefit Portal`
+- **Tagline:** `A shared public-benefits workflow where people and browser agents collaborate safely through WebMCP.`
+- **Built with:** `WebMCP`, `TypeScript`, `React`, `Vite`, `Gemini Live API`,
+  `ChatGPT Sites`, `Node.js`, `TypeBox`, `Vitest`, `Playwright`
+- **Try it out:** `https://civicflow.codesm.chatgpt.site/`
+- **Code repository:** `https://github.com/subhav13/CivicFlow`
+- **Video:** `https://youtu.be/OoCD4bAo9EA`
+- **License:** `MIT`
+- **Submitter type:** `Individual` — confirm this matches your entry.
+- **Country:** select your actual country in the form.
+- **Developer account ID:** paste the account ID requested by the form.
+- **Teammates:** add only people who actually contributed; otherwise leave
+  empty.
+
+Use the cover image at `docs/assets/civicflow-cover.jpg` as the gallery hero or
+thumbnail candidate. It is a promotional overview, not a literal screenshot.
 
 ## What did you build?
 
@@ -107,10 +116,62 @@ The implementation is split into focused boundaries:
 The optional hosted Gemini path is routed through
 `/api/gemini/session`. `server/sites-worker.ts` and
 `server/gemini-session-core.ts` keep `GEMINI_API_KEY` server-only and return a
-short-lived constrained session credential. The client and the Worker use
-explicit gates that are off by default. The accepted application behavior is
-the version 10 runtime; the documentation package was published without
-application-source changes.
+short-lived constrained session credential. The production client exposes the
+companion only when the hosted feature is enabled, and the application remains
+usable without voice.
+
+## Challenges we ran into
+
+The hardest part was not creating more tools; it was creating the right
+boundary between assistance and control. The browser, manual form, and voice
+companion all had to use one application state without giving the agent a
+hidden path around validation or human review. Contextual tools also had to
+appear and disappear as the visible selection changed, and the hosted voice
+credential had to remain server-side.
+
+We also had to make agent work legible. A successful tool call is not enough if
+the person cannot see what changed. That led to the floating companion,
+speaking cue, expandable tool list, operation status, and activity history.
+
+## Accomplishments that we're proud of
+
+- A browser agent can discover typed actions and operate the same six-section
+  workflow as the person using the form.
+- Seven static tools and three contextual tools keep the exposed capability
+  surface focused on the current task.
+- Voice and chat use the same WebMCP bridge, with visible button-only approval
+  before companion mutations.
+- The human-only **Submit Demo** boundary is explicit and tested; there is no
+  agent submit or attestation tool.
+- The project has a live judge path, public source, reproducible verification,
+  a root MIT license, and a public 2:19 demo.
+
+## What we learned
+
+WebMCP is most useful when it is treated as part of the product contract, not
+as an automation shortcut. Tool schemas, contextual availability, visible
+receipts, and conservative confirmation rules make an agent easier to trust
+because the person can understand and reverse course. We also learned that a
+manual fallback matters: the page should remain a good form even when no agent
+or voice provider is available.
+
+## What's next
+
+The next step would be usability testing with people who regularly navigate
+complex public-service forms, followed by stronger accessibility evaluation
+and reusable patterns for evidence, correction, and consent. Real government
+program rules, identity, uploads, eligibility, and submission would require a
+separate security, privacy, policy, and integration effort; they are not part
+of this prototype.
+
+## What changed during the hackathon?
+
+During the challenge period, CivicFlow became a WebMCP-native shared workflow.
+We added the typed ten-tool catalog, contextual registration, one command/state
+path for people and agents, visible operation and activity evidence, the
+Gemini voice/text companion, explicit mutation confirmation, the floating
+speaking indicator, hosted session hardening, accessibility checks, and the
+public release package. The Git history and phase ledgers document that work.
 
 ## Judging criteria map
 
@@ -151,13 +212,48 @@ and D1 are deferred. Document readiness is an internal synthetic completeness
 aid, not an official requirement or eligibility signal. Voice is optional and
 provider/quota behavior outside the recorded evidence is unverified.
 
-## Evidence and final gates
+## Judge walkthrough
 
-The claim matrix and exact evidence are maintained in
-[`civicflow-release-evidence.md`](civicflow-release-evidence.md). Before any
-submission, an independent Sol High reviewer must inspect the actual diff,
-rerun the clean-install gates, verify the current official rules, confirm the
-owner-selected MIT license is detectable in the public repository, and separately
-verify the public YouTube video. The owner must then authorize each commit,
-push, upload, and Devpost action. Until those actions occur, the repository,
-video, and submission remain publication-pending.
+1. Open <https://civicflow.codesm.chatgpt.site/> in ChatGPT's in-app browser or
+   Chrome 149+ with WebMCP testing enabled.
+2. Open the floating **Agent Companion** and expand **Activity & tools** to see
+   the current seven static capabilities.
+3. Ask, “What is left in this application?” by voice or chat.
+4. Ask for one bounded change, review the proposal, and click **Save change**.
+5. Confirm that the visible form state and activity entry update together.
+6. Continue manually to see that the portal works without an agent. The final
+   **Submit Demo** action remains local, fictional, and human-only.
+
+## Media checklist
+
+- **Thumbnail/gallery hero:** `docs/assets/civicflow-cover.jpg` — promotional
+  overview; crop to Devpost's preferred 3:2 ratio if the form preview needs it.
+- **Product screenshot 1:** portal with **Agent Companion** open.
+- **Product screenshot 2:** **Activity & tools** expanded so judges can see the
+  current capability list.
+- **Product screenshot 3:** a populated activity row after a confirmed human or
+  agent action.
+- **Video:** <https://youtu.be/OoCD4bAo9EA> — public and 2:19 long.
+
+Use literal product screenshots for evidence and the supplied cover only as a
+promotional visual. Do not add real applicant data, API keys, copyrighted
+music, or third-party marks you do not have permission to use.
+
+## Final submission checklist
+
+- [x] Live project URL is publicly reachable.
+- [x] GitHub repository is public and contains the root MIT license.
+- [x] Public YouTube demo is 2:19, below the three-minute limit.
+- [x] Project story answers WebMCP fit, UX improvement, people/agent
+      collaboration, and implementation.
+- [x] Source, assets, and local setup instructions are present.
+- [ ] Add the final gallery images in Devpost.
+- [ ] Fill country, developer account ID, and any teammate fields.
+- [ ] Review for accuracy, save, and submit before the deadline.
+- [ ] Confirm **My Projects** shows **Submitted**, not draft.
+- [ ] Do not edit the submission, repository, video, or live Site after the
+      deadline through the judging period unless organizers instruct otherwise.
+
+The claim matrix and exact technical evidence remain in
+[`civicflow-release-evidence.md`](civicflow-release-evidence.md). The Devpost
+form mutation is intentionally left to the owner.
