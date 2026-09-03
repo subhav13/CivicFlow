@@ -1,15 +1,40 @@
 # CivicFlow: A WebMPC Public Benefit Portal
 
-CivicFlow: A WebMPC Public Benefit Portal is a synthetic public-benefits workflow for exploring a practical
-human-and-agent experience with WebMCP. A person can complete the same local
-application that a browser agent can inspect and update through a bounded,
-typed tool surface. The product is a research demo: it is not a government
-service, an eligibility engine, or an enrollment submission.
+<p align="center">
+  <img src="docs/assets/civicflow-cover.jpg" alt="CivicFlow promotional overview showing the synthetic public-benefits portal" width="100%" />
+</p>
 
-> Release status: the Phase 5 documentation package is committed and published
-> to the current CivicFlow: A WebMPC Public Benefit Portal Site at <https://civicflow.codesm.chatgpt.site>. The
-> application behavior remains the previously accepted Sites version 10
-> implementation; this release added documentation and the MIT license only.
+<p align="center"><em>Promotional overview. The live product remains a synthetic research demo, not a government service.</em></p>
+
+<p align="center">
+  <a href="https://civicflow.codesm.chatgpt.site/">Live app</a> ·
+  <a href="https://youtu.be/OoCD4bAo9EA">2:19 demo video</a> ·
+  <a href="https://github.com/subhav13/CivicFlow">Public source</a> ·
+  <a href="LICENSE">MIT license</a>
+</p>
+
+CivicFlow is a synthetic public-benefits workflow where a person and a browser
+agent work on the same visible application state. WebMCP exposes bounded,
+typed actions instead of making the agent guess at labels or click order. The
+optional voice companion uses that same tool surface and asks for visible
+confirmation before it applies a change.
+
+The product name intentionally uses **WebMPC**; the browser capability used by
+the implementation and challenge is **WebMCP**. CivicFlow is not an eligibility
+engine, government service, or enrollment submission.
+
+## Judge it in 90 seconds
+
+1. Open the [live app](https://civicflow.codesm.chatgpt.site/) in ChatGPT's
+   in-app browser, or use Chrome 149+ with WebMCP testing enabled.
+2. Open the floating **Agent Companion** and expand **Activity & tools**. The
+   page initially exposes seven static tools; contextual tools appear when the
+   selected section or record makes them relevant.
+3. Ask by voice or chat, “What is left in this application?” Then request one
+   bounded change and use **Save change** to approve it.
+4. Watch the application and activity entry update together. The same workflow
+   remains fully usable through the manual form.
+5. See the complete flow in the [2:19 demo video](https://youtu.be/OoCD4bAo9EA).
 
 ## What the demo shows
 
@@ -32,25 +57,17 @@ attest the application.
 
 ## Live judge path
 
-The accepted hosted identity is:
+| Artifact          | Link                                     |
+| ----------------- | ---------------------------------------- |
+| Live portal       | <https://civicflow.codesm.chatgpt.site/> |
+| Public demo video | <https://youtu.be/OoCD4bAo9EA>           |
+| Public source     | <https://github.com/subhav13/CivicFlow>  |
+| License           | [MIT](LICENSE)                           |
 
-- URL: <https://civicflow.codesm.chatgpt.site>
-- source identity: `0632c5d503a98b9d37e2450f2e9c1f3265698930`
-- ChatGPT Sites version: `10` (accepted application behavior)
-- recorded deployment environment revision: `2`
-- evidence state: hosted-tested and user-confirmed for the application behavior
-  on 2026-08-31 (Asia/Kolkata); the current Site also carries the
-  documentation-only Phase 5 publication
-
-Open the URL in ChatGPT's in-app browser, which supports WebMCP, or in Google
-Chrome 149 or later with `chrome://flags/#enable-webmcp-testing` enabled. The
-browser capability is optional for the human portal; when WebMCP is absent,
-the regular form UI remains the manual fallback.
-
-The URL above identifies the current Sites publication. Its application
-behavior is unchanged from the accepted version 10 runtime; any
-later source commit or Sites deployment needs its own exact identity and review
-record.
+The deployed portal was tested after the final naming and companion-state
+release. WebMCP is optional for the human portal: when the capability or voice
+provider is unavailable, the regular labelled form remains the manual
+fallback. Use synthetic information only.
 
 ## WebMCP surface
 
@@ -225,7 +242,7 @@ decision.
 | Criterion             | CivicFlow: A WebMPC Public Benefit Portal evidence to inspect                                                                                                                                                               |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | WebMCP Leverage       | A ten-name typed catalog (seven static plus applicable contextual tools), `document.modelContext.registerTool` through the browser adapter, contextual registration, command/store execution, and visible activity/progress |
-| Execution             | Six-section human workflow, deterministic synthetic seed, validation/recovery, local setup/build/test gates, and accepted Sites v10 URL                                                                                     |
+| Execution             | Six-section human workflow, deterministic synthetic seed, validation/recovery, local setup/build/test gates, public Site, and a 2:19 walkthrough                                                                            |
 | Potential Impact      | A bounded example of people and agents coordinating structured application work without making policy or eligibility claims                                                                                                 |
 | Creativity & Ambition | Shared human/agent state plus optional Gemini Live companion and contextual capabilities, with a clear human-only submission boundary                                                                                       |
 
@@ -234,18 +251,15 @@ how the experience improves, what people and agents do together, and how
 WebMCP was implemented. A draft is prepared at
 [`docs/release/civicflow-devpost-draft.md`](docs/release/civicflow-devpost-draft.md).
 
-## Release and publication status
+## Release and submission status
 
-The application runtime behavior is traceable to source SHA
-`0632c5d503a98b9d37e2450f2e9c1f3265698930`, originally accepted as Sites
-version 10. The Phase 5 documentation and license package is committed and
-published as a documentation-only update at the same public URL; its exact
-release commit and Sites deployment identity are recorded in the release
-evidence and feature ledger.
+The live portal, public GitHub repository, root MIT license, and public 2:19
+YouTube demo are ready for judging. GitHub's `main` and `release` branches are
+kept at the same final submission commit. The complete copy-ready Devpost form
+draft is in
+[`docs/release/civicflow-devpost-draft.md`](docs/release/civicflow-devpost-draft.md).
 
-The owner selected MIT, and the published package includes a standard root
-`LICENSE` with the project-level notice. The eligible public-source repository
-URL, public YouTube demo URL, and Devpost submission are publication-pending;
-the license still needs to be made detectable in that authorized public
-repository. Those are external gates and must not be represented as completed
-proof.
+The Devpost form itself is intentionally a manual owner action. After the
+deadline, the repository, video, live Site, and submission should remain
+unchanged through the judging period unless the challenge organizers instruct
+otherwise.
